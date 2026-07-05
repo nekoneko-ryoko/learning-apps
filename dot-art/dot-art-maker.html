@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スタイリッシュ ドット絵メーカー Pro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* ピクセルアート特有のシャープな画像表示 */
+        .pixelated {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        /* 極細ルーラーのスタイリング */
+        .ruler-corner {
+            width: 16px;
+            height: 16px;
+        }
+        .ruler-horizontal {
+            height: 16px;
+        }
+        .ruler-vertical {
+            width: 16px;
+        }
+        /* グリッド線のスタイリング */
+        .grid-cell {
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.02);
+            transition: background-color 0.05s ease;
+        }
+        .grid-cell.show-grid {
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+        }
+        /* キャンバス背景（白） */
+        .checkerboard {
+            background-color: #ffffff;
+        }
+        /* トレース下絵のコンテナ背景調整 */
+        #trace-bg {
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            pointer-events: none;
+            transition: opacity 0.1s ease;
+        }
+        /* 横スクロール可能な要素用のスクロールバー表示（操作性を高めるため微細に表示） */
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 4px;
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #e0f2fe;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #7dd3fc;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="bg-sky-50 text-slate-700 font-sans min-h-screen flex flex-col overflow-y-auto md:overflow-hidden select-none">
+
+    <!-- コンパクトヘッダー -->
+    <header class="bg-white border-b border-sky-200 px-3 py-1.5 flex justify-between items-center gap-2 shrink-0 shadow-md z-10">
+        <div class="flex items-center gap-1.5">
+            <div class="bg-gradient-to-tr from-pink-500 to-orange-400 text-white p-1 rounded-md shadow-lg shadow-indigo-500/10">
+                <i data-lucide="palette" class="w-3.5 h-3.5"></i>
+            </div>
+            <h1 class="text-xs font-black tracking-wider text-pink-600">PIXEL PRO</h1>
+        </div>
+        
+        <!-- 操作アクション -->
+        <div class="flex items-center gap-1">
+            <button id="btn-undo" class="bg-white hover:bg-sky-100 text-sky-600 p-1.5 rounded transition disabled:opacity-30 disabled:cursor-not-allowed border border-sky-300" title="元に戻す (Ctrl+Z)">
+                <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
+            </button>
+            <button id="btn-redo" class="bg-white hover:bg-sky-100 text-sky-600 p-1.5 rounded transition disabled:opacity-30 disabled:cursor-not-allowed border border-sky-300" title="やり直す (Ctrl+Y)">
+                <i data-lucide="redo-2" class="w-3.5 h-3.5"></i>
+            </button>
+            
+            <div class="h-4 w-[1px] bg-sky-200 mx-0.5"></div>
+            
+            <button id="btn-clear" class="bg-white hover:bg-rose-100 hover:text-rose-500 hover:border-rose-300 text-rose-400 p-1.5 rounded transition border border-rose-200" title="すべてクリア">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+            
+            <div class="h-4 w-[1px] bg-sky-200 mx-0.5"></div>
+
+            <!-- 画像読み込み (自動ドット絵化用) -->
+            <label for="input-image-load" class="bg-white hover:bg-purple-100 text-purple-500 hover:text-purple-600 border border-purple-300 p-1.5 rounded transition cursor-pointer flex items-center justify-center" title="画像を読み込み / 写真をドット絵化">
+                <i data-lucide="image-plus" class="w-3.5 h-3.5"></i>
+                <input type="file" id="input-image-load" accept="image/*" class="hidden">
+            </label>
+
+            <!-- ドット絵PNG保存 -->
+            <button id="btn-save-pixel" class="bg-white hover:bg-green-100 text-green-600 border border-green-300 p-1.5 rounded transition flex items-center justify-center" title="ドット絵PNG保存 (等倍1px/再開可能)">
+                <i data-lucide="save" class="w-3.5 h-3.5"></i>
+            </button>
+
+            <!-- 高画質PNG書き出し -->
+            <button id="btn-export-hd" class="bg-pink-500 hover:bg-pink-400 text-white p-1.5 rounded transition shadow-md flex items-center justify-center" title="高画質PNGエクスポート">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- メインレイアウト: スマホ時は縦並び、PC時は横並び -->
+    <div class="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
+        
+        <!-- キャンバスエリア: 適切な余白を設定し、見切れを防ぐ -->
+        <main id="main-area" class="flex-1 bg-sky-50 flex flex-col items-center justify-center p-6 overflow-auto relative order-1 md:order-2 min-h-[300px] md:min-h-0">
+            
+            <!-- キャンバスコンテナ -->
+            <div class="relative bg-white p-4 rounded-xl border border-sky-200 flex flex-col items-center max-w-full shadow-2xl">
+                
+                <!-- ルーラーとキャンバス -->
+                <div class="flex flex-col">
+                    
+                    <!-- 上部ルーラー (X軸) -->
+                    <div class="flex">
+                        <div class="ruler-corner bg-sky-100 border-r border-b border-sky-200 shrink-0 flex items-center justify-center text-[7px] font-bold text-sky-400">px</div>
+                        <div id="ruler-x" class="ruler-horizontal bg-sky-100 border-b border-sky-200 flex overflow-hidden shrink-0 relative"></div>
+                    </div>
+
+                    <!-- 縦ルーラー (Y軸) & メインキャンバス -->
+                    <div class="flex">
+                        <div id="ruler-y" class="ruler-vertical bg-sky-100 border-r border-sky-200 flex flex-col overflow-hidden shrink-0 relative"></div>
+                        
+                        <!-- キャンバス本体 (下絵トレースレイヤーを追加) -->
+                        <div id="canvas-container" class="checkerboard relative border border-sky-300 overflow-hidden shrink-0 cursor-crosshair">
+                            <!-- トレース用背景レイヤー (グリッドセルの下に配置) -->
+                            <div id="trace-bg" class="absolute inset-0 z-0 opacity-40"></div>
+                            <!-- ピクセル描画グリッド -->
+                            <div id="pixel-grid" class="absolute inset-0 grid z-10"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- 下部インフォメーション -->
+                <div class="w-full mt-2 flex justify-between items-center text-[9px] text-slate-500 font-mono px-0.5">
+                    <div id="coord-display" class="flex items-center gap-1 text-sky-500">
+                        <i data-lucide="mouse-pointer-click" class="w-2.5 h-2.5 text-slate-600"></i>
+                        <span>X: -, Y: -</span>
+                    </div>
+                    <div id="status-display" class="bg-sky-100 px-1.5 py-0.5 rounded border border-sky-200 text-sky-600">16x16</div>
+                </div>
+
+            </div>
+
+        </main>
+
+        <!-- 左/下サイドバー (トレース下絵設定を追加) -->
+        <aside class="w-full md:w-48 bg-white border-t md:border-t-0 md:border-r border-sky-200 p-2 md:p-3 flex flex-row md:flex-col gap-3 md:gap-3.5 overflow-x-auto md:overflow-y-auto custom-scrollbar shrink-0 order-2 md:order-1 items-center md:items-stretch z-10">
+            
+            <!-- キャンバスサイズ設定＆リサイズトリガー -->
+            <div class="bg-sky-50 p-1.5 md:p-2 rounded-lg border border-sky-200 flex md:flex-col gap-1.5 items-center md:items-stretch shrink-0">
+                <div class="flex justify-between items-center gap-2 md:mb-0.5 w-full">
+                    <label class="text-[8px] md:text-[9px] font-bold text-sky-500 tracking-wider uppercase block">Size</label>
+                    <button id="btn-trigger-resize" class="text-pink-500 hover:text-pink-600 flex items-center gap-0.5 text-[8px] font-bold uppercase bg-pink-50 border border-pink-200 px-1.5 py-0.5 rounded" title="詳細なリサイズダイアログ">
+                        <i data-lucide="maximize-2" class="w-2.5 h-2.5"></i>
+                        <span class="hidden md:inline">Resize</span>
+                    </button>
+                </div>
+                <div class="relative w-20 md:w-full">
+                    <select id="select-size" class="w-full bg-white border border-sky-300 text-slate-700 rounded py-0.5 px-1 pr-4 focus:outline-none text-[10px] font-semibold appearance-none cursor-pointer">
+                        <option value="8">8 × 8</option>
+                        <option value="16" selected>16 × 16</option>
+                        <option value="32">32 × 32</option>
+                        <option value="64">64 × 64</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-sky-400">
+                        <i data-lucide="chevron-down" class="w-2.5 h-2.5"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- トレース下絵機能セクション (新規追加) -->
+            <div class="bg-sky-50 p-1.5 md:p-2 rounded-lg border border-sky-200 flex md:flex-col gap-1.5 items-center md:items-stretch shrink-0">
+                <div class="flex justify-between items-center gap-2 md:mb-0.5 w-full">
+                    <label class="text-[8px] md:text-[9px] font-bold text-sky-500 tracking-wider uppercase block">Trace (下絵)</label>
+                    <!-- 下絵クリアボタン -->
+                    <button id="btn-clear-trace" class="text-rose-400 hover:text-rose-300 hidden" title="下絵を削除">
+                        <i data-lucide="image-off" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+                
+                <div class="flex items-center gap-1 w-full">
+                    <!-- 下絵読み込みインプット -->
+                    <label for="input-trace-load" class="bg-white border border-purple-300 text-[10px] text-purple-600 px-2 py-1 rounded cursor-pointer hover:bg-purple-50 transition flex items-center gap-1 shrink-0" title="下絵用の画像を読み込みます">
+                        <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-pink-500"></i>
+                        <span>下絵読込</span>
+                        <input type="file" id="input-trace-load" accept="image/*" class="hidden">
+                    </label>
+
+                    <!-- 下絵表示切り替え＆不透明度スライダーコントロール (下絵ありの時のみ動的に有効化) -->
+                    <div id="trace-controls" class="flex items-center gap-1.5 ml-1 opacity-40 pointer-events-none transition-opacity duration-150 flex-1">
+                        <button id="btn-toggle-trace" class="text-slate-400 hover:text-slate-100" title="下絵を一時的に隠す / 表示する">
+                            <i data-lucide="eye" class="w-4 h-4" id="icon-trace-eye"></i>
+                        </button>
+                        <input type="range" id="trace-opacity" min="0" max="100" value="40" class="w-12 md:w-full h-1 bg-sky-200 rounded-lg appearance-none cursor-pointer accent-pink-500" title="下絵の不透明度を調整">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 描画ツール -->
+            <div class="bg-sky-50 p-1.5 md:p-2 rounded-lg border border-sky-200 flex md:flex-col gap-1.5 items-center md:items-stretch shrink-0">
+                <label class="text-[8px] md:text-[9px] font-bold text-sky-500 tracking-wider uppercase hidden md:block">Tools</label>
+                <div class="flex md:grid md:grid-cols-4 gap-1">
+                    <button id="tool-pencil" class="tool-btn bg-pink-100 border border-pink-400 text-pink-600 p-1.5 rounded flex items-center justify-center transition w-7 h-7 md:w-auto md:h-auto md:aspect-square" data-tool="pencil" title="ペン (P)">
+                        <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button id="tool-eraser" class="tool-btn bg-white border border-sky-200 text-sky-500 hover:text-sky-700 p-1.5 rounded flex items-center justify-center transition w-7 h-7 md:w-auto md:h-auto md:aspect-square" data-tool="eraser" title="消しゴム (E)">
+                        <i data-lucide="eraser" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button id="tool-bucket" class="tool-btn bg-white border border-sky-200 text-sky-500 hover:text-sky-700 p-1.5 rounded flex items-center justify-center transition w-7 h-7 md:w-auto md:h-auto md:aspect-square" data-tool="bucket" title="バケツ塗りつぶし (G)">
+                        <i data-lucide="paint-bucket" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button id="tool-picker" class="tool-btn bg-white border border-sky-200 text-sky-500 hover:text-sky-700 p-1.5 rounded flex items-center justify-center transition w-7 h-7 md:w-auto md:h-auto md:aspect-square" data-tool="picker" title="スポイト (S)">
+                        <i data-lucide="pipette" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 図形選択 -->
+            <div class="bg-sky-50 p-1.5 md:p-2 rounded-lg border border-sky-200 flex md:flex-col gap-1.5 items-center md:items-stretch shrink-0">
+                <label class="text-[8px] md:text-[9px] font-bold text-sky-500 tracking-wider uppercase hidden md:block">Shape</label>
+                <div class="flex md:grid md:grid-cols-5 gap-1">
+                    <!-- 四角 -->
+                    <button id="shape-rect" class="shape-btn bg-pink-100 border border-pink-400 text-pink-600 p-1 rounded flex items-center justify-center transition w-7 h-7 md:w-auto md:h-auto md:aspect-square" data-shape="rect" title="四角（■）">
+                        <svg viewBox="0 0 10 10" class="w-4 h-4"><rect x="0" y="0" width="10" height="10" fill="currentColor"/></svg>
+                    </button>
+                    <!-- 三角：左上 ◤ -->
+                    <button id="shape-tri-tl" class="shape-btn bg-white border border-sky-200 text-sky-500 hover:text-sky-700 p-1 rounded flex items-center justify-center transition w-7 h-7 md:w-auto md:h-auto md:aspect-square" data-shape="tri-tl" title="三角：左上">
+                        <svg viewBox="0 0 10 10" class="w-4 h-4"><polygon points="0,0 10,0 0,10" fill="currentColor"/></svg>
+                    </button>
+                    <!-- 三角：右上 ◥ -->
+                    <button id="shape-tri-tr" class="shape-btn bg-white border border-sky-200 text-sky-500 hover:text-sky-700 p-1 rounded flex items-center justify-center transition w-7 h-7 md:w-auto md:h-auto md:aspect-square" data-shape="tri-tr" title="三角：右上">
+                        <svg viewBox="0 0 10 10" class="w-4 h-4"><polygon points="0,0 10,0 10,10" fill="currentColor"/></svg>
+                    </button>
+                    <!-- 三角：左下 ◣ -->
+                    <button id="shape-tri-bl" class="shape-btn bg-white border border-sky-200 text-sky-500 hover:text-sky-700 p-1 rounded flex items-center justify-center transition w-7 h-7 md:w-auto md:h-auto md:aspect-square" data-shape="tri-bl" title="三角：左下">
+                        <svg viewBox="0 0 10 10" class="w-4 h-4"><polygon points="0,10 10,10 0,0" fill="currentColor"/></svg>
+                    </button>
+                    <!-- 三角：右下 ◢ -->
+                    <button id="shape-tri-br" class="shape-btn bg-white border border-sky-200 text-sky-500 hover:text-sky-700 p-1 rounded flex items-center justify-center transition w-7 h-7 md:w-auto md:h-auto md:aspect-square" data-shape="tri-br" title="三角：右下">
+                        <svg viewBox="0 0 10 10" class="w-4 h-4"><polygon points="10,0 10,10 0,10" fill="currentColor"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- カラーパレット＆ピッカー -->
+            <div class="bg-sky-50 p-1.5 md:p-2 rounded-lg border border-sky-200 flex flex-row md:flex-col gap-2.5 shrink-0 items-center md:items-stretch">
+                <!-- カラーピッカー -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <div class="relative w-6 h-6 rounded overflow-hidden border border-sky-300 shrink-0">
+                        <input type="color" id="color-picker" value="#6366f1" class="absolute inset-0 w-[200%] h-[200%] -translate-x-1/4 -translate-y-1/4 cursor-pointer">
+                    </div>
+                    <input type="text" id="color-hex" value="#6366f1" class="text-[10px] font-mono font-bold bg-transparent border-none focus:outline-none w-14 md:w-full py-0.5 text-slate-700">
+                </div>
+
+                <!-- パレット -->
+                <div class="flex md:flex-col gap-1.5 shrink-0">
+                    <div class="flex md:grid md:grid-cols-8 gap-0.5 max-w-[150px] md:max-w-none overflow-x-auto custom-scrollbar" id="preset-colors">
+                        <!-- JSで自動生成 -->
+                    </div>
+                </div>
+
+                <!-- 最近使った色 (PCのみ) -->
+                <div class="hidden md:block">
+                    <label class="text-[8px] font-bold text-sky-500 tracking-widest uppercase block mb-0.5">Recents</label>
+                    <div class="grid grid-cols-8 gap-0.5" id="recent-colors">
+                        <div class="text-[8px] text-sky-400 col-span-8 text-center py-1 border border-dashed border-sky-200 rounded">No history</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 表示設定 -->
+            <div class="bg-sky-50 p-1.5 md:p-2 rounded-lg border border-sky-200 mt-auto hidden md:block">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-[8px] font-bold text-sky-500 tracking-widest uppercase">Grid</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-grid" checked class="sr-only peer">
+                        <div class="w-7 h-4 bg-sky-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-pink-500 peer-checked:after:bg-white"></div>
+                    </label>
+                </div>
+            </div>
+
+        </aside>
+
+    </div>
+
+    <!-- 高度なリサイズモーダル -->
+    <div id="resize-modal" class="fixed inset-0 bg-sky-950/60 backdrop-blur-sm flex items-center justify-center z-50 opacity-0 pointer-events-none transition-all duration-200 p-4">
+        <div class="bg-white border border-sky-200 w-full max-w-[320px] p-4 rounded-xl shadow-2xl flex flex-col gap-3.5 transform scale-95 transition-all duration-200">
+            <div class="flex justify-between items-center">
+                <h3 class="text-[10px] font-bold text-sky-600 tracking-wider uppercase flex items-center gap-1">
+                    <i data-lucide="maximize-2" class="w-3.5 h-3.5 text-pink-500"></i>
+                    Canvas Resizer
+                </h3>
+                <button id="btn-close-resize" class="text-sky-400 hover:text-sky-600">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- サイズ指定 -->
+            <div class="grid grid-cols-2 gap-2 bg-sky-50 p-2.5 rounded-lg border border-sky-200">
+                <div>
+                    <label class="text-[8px] font-bold text-sky-500 tracking-widest uppercase block mb-1">Width (W)</label>
+                    <div class="flex items-center gap-1">
+                        <input type="number" id="input-resize-w" min="4" max="128" value="16" class="w-full bg-white border border-sky-300 text-slate-700 rounded py-0.5 px-1.5 text-xs font-bold font-mono text-center focus:outline-none">
+                        <span class="text-[9px] text-sky-400">px</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[8px] font-bold text-sky-500 tracking-widest uppercase block mb-1">Height (H)</label>
+                    <div class="flex items-center gap-1">
+                        <input type="number" id="input-resize-h" min="4" max="128" value="16" class="w-full bg-white border border-sky-300 text-slate-700 rounded py-0.5 px-1.5 text-xs font-bold font-mono text-center focus:outline-none">
+                        <span class="text-[9px] text-sky-400">px</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- リサイズモード -->
+            <div>
+                <label class="text-[8px] font-bold text-sky-500 tracking-widest uppercase block mb-1">Resize Mode</label>
+                <div class="flex flex-col gap-1">
+                    <label class="flex items-center gap-2 bg-sky-50 hover:bg-sky-100 p-2 rounded border border-sky-200 cursor-pointer transition">
+                        <input type="radio" name="resize-mode" value="crop-pad" checked class="text-pink-500 focus:ring-pink-400 border-sky-300 bg-white">
+                        <div class="text-left">
+                            <div class="text-[10px] font-bold text-slate-600">余白を追加・トリミング</div>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-2 bg-sky-50 hover:bg-sky-100 p-2 rounded border border-sky-200 cursor-pointer transition">
+                        <input type="radio" name="resize-mode" value="scale" class="text-pink-500 focus:ring-pink-400 border-sky-300 bg-white">
+                        <div class="text-left">
+                            <div class="text-[10px] font-bold text-slate-600">全体を引き伸ばして伸縮</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- アンカー位置 -->
+            <div id="anchor-container">
+                <label class="text-[8px] font-bold text-sky-500 tracking-widest uppercase block mb-1">Anchor Position</label>
+                <div class="flex justify-center">
+                    <div class="grid grid-cols-3 gap-0.5 w-20 bg-sky-50 p-1 rounded border border-sky-200">
+                        <button class="anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400" data-anchor="top-left"></button>
+                        <button class="anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400" data-anchor="top-center"></button>
+                        <button class="anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400" data-anchor="top-right"></button>
+                        <button class="anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400" data-anchor="middle-left"></button>
+                        <button class="anchor-btn w-5 h-5 rounded border border-pink-400 bg-pink-100 text-pink-500 flex items-center justify-center text-[8px]" data-anchor="center"></button>
+                        <button class="anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400" data-anchor="middle-right"></button>
+                        <button class="anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400" data-anchor="bottom-left"></button>
+                        <button class="anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400" data-anchor="bottom-center"></button>
+                        <button class="anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400" data-anchor="bottom-right"></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- アクション -->
+            <div class="grid grid-cols-2 gap-1.5 mt-1">
+                <button id="btn-cancel-resize" class="bg-sky-100 hover:bg-sky-200 text-sky-700 py-1.5 rounded text-[10px] font-bold border border-sky-300 transition">
+                    キャンセル
+                </button>
+                <button id="btn-apply-resize" class="bg-pink-500 hover:bg-pink-400 text-white py-1.5 rounded text-[10px] font-bold shadow-lg transition">
+                    適用
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知トースト -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-white text-slate-700 border border-sky-200 px-3 py-2.5 rounded-lg shadow-2xl flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 z-50 pointer-events-none">
+        <div class="bg-pink-100 text-pink-500 p-0.5 rounded" id="toast-icon-bg">
+            <i data-lucide="info" class="w-3.5 h-3.5" id="toast-icon"></i>
+        </div>
+        <span id="toast-message" class="text-[10px] font-semibold text-slate-600">通知メッセージ</span>
+    </div>
+
+    <script>
+        // --- 状態管理 ---
+        let gridW = 16;
+        let gridH = 16;
+        let canvasPixelSizeW = 320; 
+        let canvasPixelSizeH = 320; 
+        let currentColor = "#6366f1";
+        let currentTool = "pencil";
+        let currentShape = "rect"; // rect / tri-tl / tri-tr / tri-bl / tri-br
+        let isDrawing = false;
+        let showGrid = true;
+        let currentAnchor = "center"; 
+
+        // トレース用状態
+        let isTraceVisible = true;
+        let traceOpacity = 40; // 0 ~ 100
+        
+        const presetColors = [
+            "#000000", "#1e293b", "#475569", "#94a3b8", "#ffffff", "#ef4444", "#f97316",
+            "#f59e0b", "#eab308", "#84cc16", "#22c55e", "#10b981", "#06b6d4", "#0ea5e9", "#3b82f6",
+            "#6366f1", "#8b5cf6", "#a855f7", "#ec4899", "#f43f5e"
+        ];
+        
+        let recentColors = [];
+        let gridData = []; // 縦方向 gridH x 横方向 gridW の2次元配列
+
+        // 履歴管理
+        let history = [];
+        let historyIndex = -1;
+        const maxHistory = 35;
+
+        // --- DOM要素取得 ---
+        const selectSize = document.getElementById("select-size");
+        const canvasContainer = document.getElementById("canvas-container");
+        const pixelGrid = document.getElementById("pixel-grid");
+        const rulerX = document.getElementById("ruler-x");
+        const rulerY = document.getElementById("ruler-y");
+        const colorPicker = document.getElementById("color-picker");
+        const colorHex = document.getElementById("color-hex");
+        const presetColorsContainer = document.getElementById("preset-colors");
+        const recentColorsContainer = document.getElementById("recent-colors");
+        const toggleGrid = document.getElementById("toggle-grid");
+        const coordDisplay = document.getElementById("coord-display");
+        const statusDisplay = document.getElementById("status-display");
+
+        const toolButtons = document.querySelectorAll(".tool-btn");
+        const shapeButtons = document.querySelectorAll(".shape-btn");
+        const btnUndo = document.getElementById("btn-undo");
+        const btnRedo = document.getElementById("btn-redo");
+        const btnClear = document.getElementById("btn-clear");
+        const btnSavePixel = document.getElementById("btn-save-pixel");
+        const btnExportHd = document.getElementById("btn-export-hd");
+        const inputImageLoad = document.getElementById("input-image-load");
+
+        // トレース用要素
+        const traceBg = document.getElementById("trace-bg");
+        const inputTraceLoad = document.getElementById("input-trace-load");
+        const traceControls = document.getElementById("trace-controls");
+        const btnToggleTrace = document.getElementById("btn-toggle-trace");
+        const iconTraceEye = document.getElementById("icon-trace-eye");
+        const traceOpacityInput = document.getElementById("trace-opacity");
+        const btnClearTrace = document.getElementById("btn-clear-trace");
+
+        // モーダル
+        const btnTriggerResize = document.getElementById("btn-trigger-resize");
+        const resizeModal = document.getElementById("resize-modal");
+        const btnCloseResize = document.getElementById("btn-close-resize");
+        const btnCancelResize = document.getElementById("btn-cancel-resize");
+        const btnApplyResize = document.getElementById("btn-apply-resize");
+        const inputResizeW = document.getElementById("input-resize-w");
+        const inputResizeH = document.getElementById("input-resize-h");
+        const anchorContainer = document.getElementById("anchor-container");
+        const anchorButtons = document.querySelectorAll(".anchor-btn");
+
+        // --- 初期化 ---
+        window.addEventListener("DOMContentLoaded", () => {
+            lucide.createIcons();
+            initPresetColors();
+
+            gridW = 16;
+            gridH = 16;
+            adjustCanvasSize();
+            resetGridData();
+            buildCanvas();
+            updateHistory(); 
+            
+            tryLoadFromLocalStorage();
+            setupEventListeners();
+        });
+
+        // 常に最大サイズで画面内にはみ出さず、余白をしっかり持つレスポンシブスケール
+        function adjustCanvasSize() {
+            const mainArea = document.getElementById("main-area");
+            if (!mainArea) return;
+
+            // 親コンテナのクライアント寸法
+            const mainW = mainArea.clientWidth;
+            const mainH = mainArea.clientHeight;
+
+            const rulerSize = 16;
+
+            // 画面サイズに対してキャンバスサイズを最大でも80%程度に制限し、美しい「ゆとり(余白)」を意図的に作成
+            const maxW = Math.max(100, Math.round((mainW - rulerSize) * 0.78) - 16);
+            const maxH = Math.max(100, Math.round((mainH - rulerSize) * 0.78) - 16);
+
+            // アスペクト比にフィットさせる
+            if (gridW / gridH >= maxW / maxH) {
+                canvasPixelSizeW = maxW;
+                canvasPixelSizeH = Math.round(maxW * (gridH / gridW));
+            } else {
+                canvasPixelSizeH = maxH;
+                canvasPixelSizeW = Math.round(maxH * (gridW / gridH));
+            }
+            
+            // キャンバスが大きくなりすぎないように制限（最大380pxに上限を設定、狭い画面ではさらに縮小される）
+            const sizeUpperLimit = 380;
+            if (canvasPixelSizeW > sizeUpperLimit || canvasPixelSizeH > sizeUpperLimit) {
+                if (gridW >= gridH) {
+                    canvasPixelSizeW = sizeUpperLimit;
+                    canvasPixelSizeH = Math.round(sizeUpperLimit * (gridH / gridW));
+                } else {
+                    canvasPixelSizeH = sizeUpperLimit;
+                    canvasPixelSizeW = Math.round(sizeUpperLimit * (gridW / gridH));
+                }
+            }
+            
+            canvasContainer.style.width = `${canvasPixelSizeW}px`;
+            canvasContainer.style.height = `${canvasPixelSizeH}px`;
+            rulerX.style.width = `${canvasPixelSizeW}px`;
+            rulerY.style.height = `${canvasPixelSizeH}px`;
+        }
+
+        window.addEventListener("resize", () => {
+            adjustCanvasSize();
+            buildCanvas(); 
+        });
+
+        function resetGridData() {
+            gridData = [];
+            for (let y = 0; y < gridH; y++) {
+                gridData[y] = [];
+                for (let x = 0; x < gridW; x++) {
+                    gridData[y][x] = null; 
+                }
+            }
+        }
+
+        function initPresetColors() {
+            presetColorsContainer.innerHTML = "";
+            presetColors.forEach(color => {
+                const btn = document.createElement("button");
+                btn.className = "w-4 h-4 md:w-5 md:h-5 rounded border border-sky-200 shadow-sm transition hover:scale-110 active:scale-95 focus:outline-none shrink-0";
+                btn.style.backgroundColor = color;
+                btn.title = color;
+                btn.addEventListener("click", () => selectNewColor(color));
+                presetColorsContainer.appendChild(btn);
+            });
+        }
+
+        function addRecentColor(color) {
+            if (!color || color === "transparent") return;
+            recentColors = recentColors.filter(c => c !== color);
+            recentColors.unshift(color);
+            if (recentColors.length > 8) {
+                recentColors.pop();
+            }
+            renderRecentColors();
+        }
+
+        function renderRecentColors() {
+            recentColorsContainer.innerHTML = "";
+            if (recentColors.length === 0) {
+                recentColorsContainer.innerHTML = '<div class="text-[8px] text-sky-400 col-span-8 text-center py-1 border border-dashed border-sky-200 rounded">No history</div>';
+                return;
+            }
+            recentColors.forEach(color => {
+                const btn = document.createElement("button");
+                btn.className = "rounded border border-sky-200 shadow-sm transition hover:scale-110 active:scale-95 focus:outline-none shrink-0";
+                btn.style.width = "18px";
+                btn.style.height = "18px";
+                btn.style.backgroundColor = color;
+                btn.title = color;
+                btn.addEventListener("click", () => selectNewColor(color));
+                recentColorsContainer.appendChild(btn);
+            });
+        }
+
+        function selectNewColor(color) {
+            currentColor = color;
+            colorPicker.value = color;
+            colorHex.value = color;
+        }
+
+        // --- キャンバスと極細ルーラーの構築 ---
+        // 図形種別→SVGパス文字列
+        function getShapePath(shape, color) {
+            const m = {
+                "rect":   `<rect x="0" y="0" width="100" height="100" fill="${color}"/>`,
+                "tri-tl": `<polygon points="0,0 100,0 0,100" fill="${color}"/>`,
+                "tri-tr": `<polygon points="0,0 100,0 100,100" fill="${color}"/>`,
+                "tri-bl": `<polygon points="0,0 0,100 100,100" fill="${color}"/>`,
+                "tri-br": `<polygon points="100,0 100,100 0,100" fill="${color}"/>`,
+            };
+            return m[shape] || m["rect"];
+        }
+
+        // セルのSVGを生成（2レイヤー対応）
+        function getCellSVG(cellData) {
+            if (!cellData) return "";
+            let inner = getShapePath(cellData.shape1 || "rect", cellData.color1);
+            if (cellData.shape2 && cellData.color2) {
+                inner += getShapePath(cellData.shape2, cellData.color2);
+            }
+            return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="w-full h-full block pointer-events-none">${inner}</svg>`;
+        }
+
+        function buildCanvas() {
+            pixelGrid.innerHTML = "";
+            pixelGrid.style.gridTemplateColumns = `repeat(${gridW}, 1fr)`;
+            pixelGrid.style.gridTemplateRows = `repeat(${gridH}, 1fr)`;
+
+            const cellW = canvasPixelSizeW / gridW;
+            const cellH = canvasPixelSizeH / gridH;
+
+            for (let y = 0; y < gridH; y++) {
+                for (let x = 0; x < gridW; x++) {
+                    const cell = document.createElement("div");
+                    cell.className = `grid-cell ${showGrid ? 'show-grid' : ''}`;
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    cell.style.position = "relative";
+                    cell.style.overflow = "hidden";
+                    
+                    const cellData = gridData[y]?.[x];
+                    cell.innerHTML = getCellSVG(cellData);
+
+                    // マウス・タッチ操作
+                    cell.addEventListener("mousedown", (e) => {
+                        e.preventDefault();
+                        isDrawing = true;
+                        handleCellInteraction(x, y);
+                    });
+
+                    cell.addEventListener("mouseenter", () => {
+                        updateCoords(x, y);
+                        if (isDrawing) {
+                            handleCellInteraction(x, y);
+                        }
+                    });
+
+                    cell.addEventListener("mouseleave", () => {
+                        clearCoords();
+                    });
+
+                    pixelGrid.appendChild(cell);
+                }
+            }
+
+            buildRulers(cellW, cellH);
+            statusDisplay.textContent = `${gridW} x ${gridH}`;
+        }
+
+        // 目盛り表示
+        function buildRulers(cellW, cellH) {
+            rulerX.innerHTML = "";
+            rulerY.innerHTML = "";
+
+            for (let x = 0; x < gridW; x++) {
+                const tick = document.createElement("div");
+                tick.className = "absolute top-0 bottom-0 border-r border-sky-200 flex flex-col justify-end pb-0.5 text-[7px] text-sky-400 font-bold font-mono text-center transition-colors duration-150";
+                tick.style.width = `${cellW}px`;
+                tick.style.left = `${x * cellW}px`;
+                
+                const shouldShowLabel = (gridW <= 16) || (gridW <= 32 && x % 2 === 0) || (gridW <= 64 && x % 4 === 0) || (x % 8 === 0);
+                if (shouldShowLabel) {
+                    tick.textContent = x;
+                } else {
+                    const notch = document.createElement("div");
+                    notch.className = "w-[1px] h-0.5 bg-slate-750 mx-auto";
+                    tick.appendChild(notch);
+                }
+                rulerX.appendChild(tick);
+            }
+
+            for (let y = 0; y < gridH; y++) {
+                const tick = document.createElement("div");
+                tick.className = "absolute left-0 right-0 border-b border-sky-200 flex items-center justify-end pr-0.5 text-[7px] text-sky-400 font-bold font-mono transition-colors duration-150";
+                tick.style.height = `${cellH}px`;
+                tick.style.top = `${y * cellH}px`;
+
+                const shouldShowLabel = (gridH <= 16) || (gridH <= 32 && y % 2 === 0) || (gridH <= 64 && y % 4 === 0) || (y % 8 === 0);
+                if (shouldShowLabel) {
+                    tick.textContent = y;
+                } else {
+                    const notch = document.createElement("div");
+                    notch.className = "h-[1px] w-0.5 bg-slate-750 ml-auto";
+                    tick.appendChild(notch);
+                }
+                rulerY.appendChild(tick);
+            }
+        }
+
+        function updateCoords(x, y) {
+            coordDisplay.innerHTML = `<i data-lucide="mouse-pointer-click" class="w-2.5 h-2.5 text-pink-500"></i><span>X: ${x}, Y: ${y}</span>`;
+            lucide.createIcons({ attrs: { class: 'w-2.5 h-2.5 text-pink-500' } });
+            highlightRuler(x, y);
+        }
+
+        function clearCoords() {
+            coordDisplay.innerHTML = `<i data-lucide="mouse-pointer-click" class="w-2.5 h-2.5 text-slate-600"></i><span>X: -, Y: -</span>`;
+            lucide.createIcons({ attrs: { class: 'w-2.5 h-2.5 text-slate-600' } });
+            
+            const ticks = document.querySelectorAll(".ruler-horizontal > div, .ruler-vertical > div");
+            ticks.forEach(t => {
+                t.style.backgroundColor = "transparent";
+                t.style.color = "#64748b"; 
+            });
+        }
+
+        function highlightRuler(x, y) {
+            const xTicks = rulerX.children;
+            if (xTicks[x]) {
+                xTicks[x].style.backgroundColor = "rgba(99, 102, 241, 0.15)"; 
+                xTicks[x].style.color = "#818cf8"; 
+            }
+            const yTicks = rulerY.children;
+            if (yTicks[y]) {
+                yTicks[y].style.backgroundColor = "rgba(99, 102, 241, 0.15)";
+                yTicks[y].style.color = "#818cf8";
+            }
+        }
+
+        // --- ペイント操作 ---
+        // セルデータのキー（バケツ判定用）
+        function cellKey(cd) {
+            if (!cd) return "null";
+            // shape2がある場合は両レイヤーで比較
+            const s2 = cd.shape2 ? `|${cd.color2}|${cd.shape2}` : "";
+            return `${cd.color1}|${cd.shape1}${s2}`;
+        }
+
+        function handleCellInteraction(x, y) {
+            if (x < 0 || x >= gridW || y < 0 || y >= gridH) return;
+
+            if (currentTool === "pencil") {
+                drawPixel(x, y, currentColor, currentShape);
+            } else if (currentTool === "eraser") {
+                erasePixel(x, y);
+            } else if (currentTool === "bucket") {
+                fillArea(x, y, currentColor, currentShape);
+            } else if (currentTool === "picker") {
+                const cd = gridData[y][x];
+                if (cd) {
+                    // shape2があれば上のレイヤーを優先してスポイト
+                    const color = cd.color2 || cd.color1;
+                    const shape = cd.shape2 || cd.shape1 || "rect";
+                    selectNewColor(color);
+                    setShape(shape);
+                    showToast("スポイトしました", "pipette");
+                } else {
+                    showToast("透明領域です", "info");
+                }
+                setTool("pencil");
+            }
+        }
+
+        function drawPixel(x, y, color, shape) {
+            const prev = gridData[y][x];
+
+            if (!prev) {
+                // 空セル → shape1として置く
+                gridData[y][x] = { shape1: shape || "rect", color1: color };
+            } else if (!prev.shape2) {
+                // shape1だけある → shape2として追加（同じ形・色なら無視）
+                if (prev.shape1 === shape && prev.color1 === color) return;
+                // rectにrectは重ねても意味がないので上書き
+                if (shape === "rect" && prev.shape1 === "rect") {
+                    gridData[y][x] = { shape1: "rect", color1: color };
+                } else if (shape === "rect") {
+                    // rectは常に下レイヤー：shape1をrectにして既存をshape2へ
+                    gridData[y][x] = { shape1: "rect", color1: color, shape2: prev.shape1, color2: prev.color1 };
+                } else {
+                    // 三角を三角の上に → shape2として重ねる
+                    gridData[y][x] = { ...prev, shape2: shape, color2: color };
+                }
+            } else {
+                // 両レイヤーが埋まっている → shape2を上書き
+                if (prev.shape2 === shape && prev.color2 === color) return;
+                gridData[y][x] = { ...prev, shape2: shape, color2: color };
+            }
+
+            renderCell(x, y);
+            if (color) addRecentColor(color);
+            saveToLocalStorage();
+        }
+
+        // 消しゴム：2つ目→1つ目の順で1枚ずつ消す
+        function erasePixel(x, y) {
+            const prev = gridData[y][x];
+            if (!prev) return;
+            if (prev.shape2) {
+                // shape2だけ消す
+                gridData[y][x] = { shape1: prev.shape1, color1: prev.color1 };
+            } else {
+                // shape1も消す（セル空に）
+                gridData[y][x] = null;
+            }
+            renderCell(x, y);
+            saveToLocalStorage();
+        }
+
+        // セルDOMを更新する共通処理
+        function renderCell(x, y) {
+            const index = y * gridW + x;
+            const cell = pixelGrid.children[index];
+            if (cell) cell.innerHTML = getCellSVG(gridData[y][x]);
+        }
+
+        function fillArea(startX, startY, targetColor, targetShape) {
+            const startCell = gridData[startY][startX];
+            const startKeyStr = cellKey(startCell);
+            // 新しく置くセルのキー（shape1のみ版で比較）
+            const targetKeyStr = targetColor ? cellKey({ shape1: targetShape || "rect", color1: targetColor }) : "null";
+            if (startKeyStr === targetKeyStr) return;
+
+            const queue = [[startX, startY]];
+            const visited = new Set();
+            const pixelsToChange = [];
+
+            while (queue.length > 0) {
+                const [x, y] = queue.shift();
+                const key = `${x},${y}`;
+                if (x < 0 || x >= gridW || y < 0 || y >= gridH) continue;
+                if (visited.has(key)) continue;
+                visited.add(key);
+                if (cellKey(gridData[y][x]) !== startKeyStr) continue;
+                pixelsToChange.push([x, y]);
+                queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+            }
+
+            pixelsToChange.forEach(([x, y]) => {
+                gridData[y][x] = targetColor ? { shape1: targetShape || "rect", color1: targetColor } : null;
+                renderCell(x, y);
+            });
+
+            if (targetColor) addRecentColor(targetColor);
+            updateHistory();
+            saveToLocalStorage();
+        }
+
+        window.addEventListener("mouseup", () => {
+            if (isDrawing) {
+                isDrawing = false;
+                if (currentTool === "pencil" || currentTool === "eraser") {
+                    updateHistory();
+                }
+            }
+        });
+
+        // タッチ操作サポート
+        canvasContainer.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (element && element.classList.contains("grid-cell")) {
+                isDrawing = true;
+                const x = parseInt(element.dataset.x);
+                const y = parseInt(element.dataset.y);
+                handleCellInteraction(x, y);
+            }
+        }, { passive: false });
+
+        canvasContainer.addEventListener("touchmove", (e) => {
+            e.preventDefault();
+            if (!isDrawing) return;
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (element && element.classList.contains("grid-cell")) {
+                const x = parseInt(element.dataset.x);
+                const y = parseInt(element.dataset.y);
+                handleCellInteraction(x, y);
+            }
+        }, { passive: false });
+
+        canvasContainer.addEventListener("touchend", () => {
+            if (isDrawing) {
+                isDrawing = false;
+                if (currentTool === "pencil" || currentTool === "eraser") {
+                    updateHistory();
+                }
+            }
+        });
+
+        // --- イベントハンドラー ---
+        function setupEventListeners() {
+            
+            // 簡易サイズ変更
+            selectSize.addEventListener("change", (e) => {
+                const val = e.target.value;
+                if (val === "custom") {
+                    openResizeModal();
+                    updateSelectSizeOption();
+                    return;
+                }
+                const targetSize = parseInt(val);
+                if (targetSize) {
+                    resizeCanvasData(targetSize, targetSize, "crop-pad", "center");
+                    showToast(`サイズを ${targetSize}x${targetSize} に変更（絵は保持）`, "grid");
+                }
+            });
+
+            // ツール選択
+            toolButtons.forEach(button => {
+                button.addEventListener("click", () => {
+                    setTool(button.dataset.tool);
+                });
+            });
+
+            // 図形選択
+            shapeButtons.forEach(button => {
+                button.addEventListener("click", () => {
+                    setShape(button.dataset.shape);
+                });
+            });
+
+            // カラーピッカー
+            colorPicker.addEventListener("input", (e) => {
+                currentColor = e.target.value;
+                colorHex.value = currentColor;
+            });
+
+            // カラーテキスト
+            colorHex.addEventListener("change", (e) => {
+                let value = e.target.value.trim();
+                if (!value.startsWith("#")) {
+                    value = "#" + value;
+                }
+                if (/^#[0-9A-F]{6}$/i.test(value)) {
+                    currentColor = value;
+                    colorPicker.value = value;
+                } else {
+                    colorHex.value = currentColor;
+                    showToast("無効なカラーコードです", "alert-circle");
+                }
+            });
+
+            // グリッドトグル
+            toggleGrid.addEventListener("change", (e) => {
+                showGrid = e.target.checked;
+                const cells = document.querySelectorAll(".grid-cell");
+                cells.forEach(cell => {
+                    if (showGrid) {
+                        cell.classList.add("show-grid");
+                    } else {
+                        cell.classList.remove("show-grid");
+                    }
+                });
+            });
+
+            // 全消去
+            btnClear.addEventListener("click", () => {
+                const confirmed = confirm("すべてのピクセルをクリアしますか？");
+                if (confirmed) {
+                    resetGridData();
+                    buildCanvas();
+                    updateHistory();
+                    saveToLocalStorage();
+                    showToast("クリアしました", "trash");
+                }
+            });
+
+            btnUndo.addEventListener("click", undo);
+            btnRedo.addEventListener("click", redo);
+
+            // ショートカットキー
+            document.addEventListener("keydown", (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+                    e.preventDefault();
+                    undo();
+                }
+                if ((e.ctrlKey || e.metaKey) && e.key === "y") {
+                    e.preventDefault();
+                    redo();
+                }
+                if (e.key === "p" || e.key === "P") setTool("pencil");
+                if (e.key === "e" || e.key === "E") setTool("eraser");
+                if (e.key === "g" || e.key === "G") setTool("bucket");
+                if (e.key === "s" || e.key === "S") setTool("picker");
+            });
+
+            // 保存＆読込
+            btnSavePixel.addEventListener("click", saveAsPixelPNG);
+            btnExportHd.addEventListener("click", exportHighResPNG);
+            inputImageLoad.addEventListener("change", handleImageUpload);
+
+            // モーダル
+            btnTriggerResize.addEventListener("click", openResizeModal);
+            btnCloseResize.addEventListener("click", closeResizeModal);
+            btnCancelResize.addEventListener("click", closeResizeModal);
+            btnApplyResize.addEventListener("click", applyAdvancedResize);
+
+            // モード切替
+            const resizeRadioGroup = document.querySelectorAll('input[name="resize-mode"]');
+            resizeRadioGroup.forEach(radio => {
+                radio.addEventListener("change", (e) => {
+                    if (e.target.value === "crop-pad") {
+                        anchorContainer.classList.remove("opacity-40", "pointer-events-none");
+                    } else {
+                        anchorContainer.classList.add("opacity-40", "pointer-events-none");
+                    }
+                });
+            });
+
+            // アンカーボタン
+            anchorButtons.forEach(btn => {
+                btn.addEventListener("click", () => {
+                    anchorButtons.forEach(b => {
+                        b.className = "anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400";
+                        b.innerHTML = "";
+                    });
+                    btn.className = "anchor-btn w-5 h-5 rounded border border-pink-400 bg-pink-100 text-pink-500 flex items-center justify-center text-[8px]";
+                    currentAnchor = btn.dataset.anchor;
+                });
+            });
+
+            // --- 🚀 下絵トレース機能のイベントリスナー ---
+            
+            // 下絵画像のアップロード読込
+            inputTraceLoad.addEventListener("change", handleTraceImageUpload);
+
+            // 下絵の一時的な非表示/表示切り替え
+            btnToggleTrace.addEventListener("click", toggleTraceVisibility);
+
+            // 下絵の不透明度スライダー変更
+            traceOpacityInput.addEventListener("input", (e) => {
+                traceOpacity = e.target.value;
+                updateTraceStyle();
+            });
+
+            // 下絵の消去（ゴミ箱）
+            btnClearTrace.addEventListener("click", clearTraceImage);
+        }
+
+        function updateSelectSizeOption() {
+            if (gridW === 8 && gridH === 8) selectSize.value = "8";
+            else if (gridW === 16 && gridH === 16) selectSize.value = "16";
+            else if (gridW === 32 && gridH === 32) selectSize.value = "32";
+            else if (gridW === 64 && gridH === 64) selectSize.value = "64";
+            else selectSize.value = "custom";
+        }
+
+        function setTool(toolName) {
+            currentTool = toolName;
+            toolButtons.forEach(btn => {
+                if (btn.dataset.tool === toolName) {
+                    btn.classList.add("bg-pink-100", "border-pink-400", "text-pink-600");
+                    btn.classList.remove("bg-white", "border-sky-200", "text-sky-500", "hover:text-sky-700");
+                } else {
+                    btn.classList.remove("bg-pink-100", "border-pink-400", "text-pink-600");
+                    btn.classList.add("bg-white", "border-sky-200", "text-sky-500", "hover:text-sky-700");
+                }
+            });
+        }
+
+        function setShape(shapeName) {
+            currentShape = shapeName;
+            shapeButtons.forEach(btn => {
+                if (btn.dataset.shape === shapeName) {
+                    btn.classList.add("bg-pink-100", "border-pink-400", "text-pink-600");
+                    btn.classList.remove("bg-white", "border-sky-200", "text-sky-500", "hover:text-sky-700");
+                } else {
+                    btn.classList.remove("bg-pink-100", "border-pink-400", "text-pink-600");
+                    btn.classList.add("bg-white", "border-sky-200", "text-sky-500", "hover:text-sky-700");
+                }
+            });
+        }
+
+        // --- モーダル制御 ---
+        function openResizeModal() {
+            inputResizeW.value = gridW;
+            inputResizeH.value = gridH;
+            resizeModal.classList.remove("opacity-0", "pointer-events-none");
+            resizeModal.firstElementChild.classList.remove("scale-95");
+            resizeModal.firstElementChild.classList.add("scale-100");
+        }
+
+        function closeResizeModal() {
+            resizeModal.classList.add("opacity-0", "pointer-events-none");
+            resizeModal.firstElementChild.classList.remove("scale-100");
+            resizeModal.firstElementChild.classList.add("scale-95");
+        }
+
+        function applyAdvancedResize() {
+            const newW = Math.max(4, Math.min(128, parseInt(inputResizeW.value) || 16));
+            const newH = Math.max(4, Math.min(128, parseInt(inputResizeH.value) || 16));
+            const mode = document.querySelector('input[name="resize-mode"]:checked').value;
+
+            resizeCanvasData(newW, newH, mode, currentAnchor);
+            closeResizeModal();
+            updateSelectSizeOption();
+            showToast(`キャンバスを ${newW}x${newH} にリサイズしました`, "sparkles");
+        }
+
+        // --- 統合リサイズエンジン ---
+        function resizeCanvasData(newW, newH, mode, anchor = "center") {
+            const newGridData = [];
+            
+            for (let y = 0; y < newH; y++) {
+                newGridData[y] = [];
+                for (let x = 0; x < newW; x++) {
+                    newGridData[y][x] = null; 
+                }
+            }
+
+            if (mode === "crop-pad") {
+                let dy = 0;
+                let dx = 0;
+
+                switch (anchor) {
+                    case "top-left":
+                        dy = 0; dx = 0; break;
+                    case "top-center":
+                        dy = 0; dx = Math.floor((newW - gridW) / 2); break;
+                    case "top-right":
+                        dy = 0; dx = newW - gridW; break;
+                    case "middle-left":
+                        dy = Math.floor((newH - gridH) / 2); dx = 0; break;
+                    case "center":
+                        dy = Math.floor((newH - gridH) / 2); dx = Math.floor((newW - gridW) / 2); break;
+                    case "middle-right":
+                        dy = Math.floor((newH - gridH) / 2); dx = newW - gridW; break;
+                    case "bottom-left":
+                        dy = newH - gridH; dx = 0; break;
+                    case "bottom-center":
+                        dy = newH - gridH; dx = Math.floor((newW - gridW) / 2); break;
+                    case "bottom-right":
+                        dy = newH - gridH; dx = newW - gridW; break;
+                }
+
+                for (let y = 0; y < newH; y++) {
+                    for (let x = 0; x < newW; x++) {
+                        const oldY = y - dy;
+                        const oldX = x - dx;
+                        if (oldY >= 0 && oldY < gridH && oldX >= 0 && oldX < gridW) {
+                            newGridData[y][x] = gridData[oldY]?.[oldX] || null;
+                        }
+                    }
+                }
+            } else if (mode === "scale") {
+                for (let y = 0; y < newH; y++) {
+                    for (let x = 0; x < newW; x++) {
+                        const srcX = Math.floor((x / newW) * gridW);
+                        const srcY = Math.floor((y / newH) * gridH);
+                        const clampX = Math.min(Math.max(srcX, 0), gridW - 1);
+                        const clampY = Math.min(Math.max(srcY, 0), gridH - 1);
+                        newGridData[y][x] = gridData[clampY]?.[clampX] || null;
+                    }
+                }
+            }
+
+            gridW = newW;
+            gridH = newH;
+            gridData = newGridData;
+
+            adjustCanvasSize();
+            buildCanvas();
+            updateHistory();
+            saveToLocalStorage();
+        }
+
+        // --- 履歴機能 ---
+        function updateHistory() {
+            const state = JSON.stringify({
+                gridW: gridW,
+                gridH: gridH,
+                data: gridData
+            });
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+            history.push(state);
+            if (history.length > maxHistory) {
+                history.shift();
+            } else {
+                historyIndex++;
+            }
+            updateHistoryButtons();
+        }
+
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                const hist = JSON.parse(history[historyIndex]);
+                gridW = hist.gridW;
+                gridH = hist.gridH;
+                gridData = hist.data;
+                
+                adjustCanvasSize();
+                buildCanvas();
+                updateSelectSizeOption();
+                updateHistoryButtons();
+                saveToLocalStorage();
+                showToast("戻しました", "undo-2");
+            }
+        }
+
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                const hist = JSON.parse(history[historyIndex]);
+                gridW = hist.gridW;
+                gridH = hist.gridH;
+                gridData = hist.data;
+                
+                adjustCanvasSize();
+                buildCanvas();
+                updateSelectSizeOption();
+                updateHistoryButtons();
+                saveToLocalStorage();
+                showToast("進めました", "redo-2");
+            }
+        }
+
+        function updateHistoryButtons() {
+            btnUndo.disabled = historyIndex <= 0;
+            btnRedo.disabled = historyIndex >= history.length - 1;
+        }
+
+        // --- トレース下絵の制御機能 ---
+
+        // トトレース画像を読み込む処理
+        function handleTraceImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                traceBg.style.backgroundImage = `url('${event.target.result}')`;
+                
+                // 下絵コントロールUIを活性化
+                traceControls.classList.remove("opacity-40", "pointer-events-none");
+                btnClearTrace.classList.remove("hidden");
+                
+                // 表示状態を強制ONに
+                isTraceVisible = true;
+                updateTraceStyle();
+
+                showToast("下絵（トレース用画像）を読み込みました", "image");
+            };
+            reader.readAsDataURL(file);
+            e.target.value = ""; // リセットして再読み込み可能に
+        }
+
+        // 下絵の表示/非表示（目のアイコンクリック）
+        function toggleTraceVisibility() {
+            isTraceVisible = !isTraceVisible;
+            updateTraceStyle();
+            
+            if (isTraceVisible) {
+                showToast("下絵を表示しました", "eye");
+            } else {
+                showToast("下絵を非表示にしました（外しました）", "eye-off");
+            }
+        }
+
+        // 不透明度や表示トグルを背景スタイルに反映
+        function updateTraceStyle() {
+            if (isTraceVisible) {
+                traceBg.style.opacity = traceOpacity / 100;
+                iconTraceEye.setAttribute("data-lucide", "eye");
+                btnToggleTrace.classList.remove("text-rose-400");
+                btnToggleTrace.classList.add("text-pink-500");
+            } else {
+                traceBg.style.opacity = 0;
+                iconTraceEye.setAttribute("data-lucide", "eye-off");
+                btnToggleTrace.classList.remove("text-pink-500");
+                btnToggleTrace.classList.add("text-rose-400");
+            }
+            // Lucideアイコンの再描画
+            lucide.createIcons({ attrs: { class: 'w-4 h-4' } });
+        }
+
+        // 下絵を削除する
+        function clearTraceImage() {
+            const confirmed = confirm("読み込んだ下絵をクリアしますか？（ドット絵データは消えません）");
+            if (confirmed) {
+                traceBg.style.backgroundImage = "none";
+                traceBg.style.opacity = 0;
+                
+                // コントロールUIを不活性化
+                traceControls.classList.add("opacity-40", "pointer-events-none");
+                btnClearTrace.classList.add("hidden");
+                
+                showToast("下絵をクリアしました", "image-off");
+            }
+        }
+
+        // --- 保存・読込 ---
+
+        // Canvasに1図形を描くヘルパー
+        function drawShapeOnCanvas(ctx, shape, color, px, py, size) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            switch (shape) {
+                case "tri-tl": ctx.moveTo(px,py); ctx.lineTo(px+size,py); ctx.lineTo(px,py+size); break;
+                case "tri-tr": ctx.moveTo(px,py); ctx.lineTo(px+size,py); ctx.lineTo(px+size,py+size); break;
+                case "tri-bl": ctx.moveTo(px,py); ctx.lineTo(px,py+size); ctx.lineTo(px+size,py+size); break;
+                case "tri-br": ctx.moveTo(px+size,py); ctx.lineTo(px+size,py+size); ctx.lineTo(px,py+size); break;
+                default: ctx.rect(px, py, size, size);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Canvasに1セル分（2レイヤー対応）を描画するヘルパー
+        function drawCellOnCanvas(ctx, cellData, px, py, size) {
+            if (!cellData) return;
+            drawShapeOnCanvas(ctx, cellData.shape1 || "rect", cellData.color1, px, py, size);
+            if (cellData.shape2 && cellData.color2) {
+                drawShapeOnCanvas(ctx, cellData.shape2, cellData.color2, px, py, size);
+            }
+        }
+
+        function saveAsPixelPNG() {
+            const tempCanvas = document.createElement("canvas");
+            tempCanvas.width = gridW;
+            tempCanvas.height = gridH;
+            const ctx = tempCanvas.getContext("2d");
+
+            for (let y = 0; y < gridH; y++) {
+                for (let x = 0; x < gridW; x++) {
+                    const cellData = gridData[y]?.[x];
+                    if (cellData) {
+                        drawCellOnCanvas(ctx, cellData, x, y, 1);
+                    } else {
+                        ctx.clearRect(x, y, 1, 1);
+                    }
+                }
+            }
+
+            try {
+                const url = tempCanvas.toDataURL("image/png");
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `pixel-art-${gridW}x${gridH}_loadable.png`;
+                link.click();
+                showToast("等倍PNGを保存しました（再開可能）", "save");
+            } catch (err) {
+                showToast("保存に失敗しました", "alert-circle");
+            }
+        }
+
+        function exportHighResPNG() {
+            const tempCanvas = document.createElement("canvas");
+            const scale = 32; 
+            tempCanvas.width = gridW * scale;
+            tempCanvas.height = gridH * scale;
+            const ctx = tempCanvas.getContext("2d");
+
+            ctx.imageSmoothingEnabled = false;
+
+            for (let y = 0; y < gridH; y++) {
+                for (let x = 0; x < gridW; x++) {
+                    const cellData = gridData[y]?.[x];
+                    if (cellData) {
+                        drawCellOnCanvas(ctx, cellData, x * scale, y * scale, scale);
+                    } else {
+                        ctx.clearRect(x * scale, y * scale, scale, scale);
+                    }
+                }
+            }
+
+            try {
+                const url = tempCanvas.toDataURL("image/png");
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `pixel-art-export-${gridW}x${gridH}.png`;
+                link.click();
+                showToast("高画質PNGを書き出しました", "download");
+            } catch (err) {
+                showToast("書き出しに失敗しました", "alert-circle");
+            }
+        }
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    let targetW = gridW;
+                    let targetH = gridH;
+
+                    if (img.width <= 128 && img.height <= 128) {
+                        targetW = img.width;
+                        targetH = img.height;
+                    } else {
+                        const aspect = img.width / img.height;
+                        const baseLimit = Math.max(gridW, gridH);
+                        if (aspect >= 1) {
+                            targetW = baseLimit;
+                            targetH = Math.round(baseLimit / aspect);
+                        } else {
+                            targetH = baseLimit;
+                            targetW = Math.round(baseLimit * aspect);
+                        }
+                        targetW = Math.max(4, Math.min(targetW, 128));
+                        targetH = Math.max(4, Math.min(targetH, 128));
+                    }
+
+                    const tempCanvas = document.createElement("canvas");
+                    tempCanvas.width = targetW;
+                    tempCanvas.height = targetH;
+                    const ctx = tempCanvas.getContext("2d");
+
+                    ctx.imageSmoothingEnabled = false;
+                    ctx.clearRect(0, 0, targetW, targetH);
+                    ctx.drawImage(img, 0, 0, targetW, targetH);
+
+                    const imgData = ctx.getImageData(0, 0, targetW, targetH);
+                    const pixels = imgData.data;
+
+                    gridW = targetW;
+                    gridH = targetH;
+                    gridData = [];
+
+                    for (let y = 0; y < gridH; y++) {
+                        gridData[y] = [];
+                        for (let x = 0; x < gridW; x++) {
+                            const index = (y * gridW + x) * 4;
+                            const r = pixels[index];
+                            const g = pixels[index + 1];
+                            const b = pixels[index + 2];
+                            const a = pixels[index + 3];
+
+                            if (a < 50) {
+                                gridData[y][x] = null;
+                            } else {
+                                const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+                                gridData[y][x] = { shape1: "rect", color1: hex };
+                                addRecentColor(hex);
+                            }
+                        }
+                    }
+
+                    adjustCanvasSize();
+                    buildCanvas();
+                    updateSelectSizeOption();
+                    updateHistory();
+                    saveToLocalStorage();
+                    showToast(`ドット絵化に成功! (${gridW}x${gridH})`, "sparkles");
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+            
+            e.target.value = "";
+        }
+
+        // --- ローカルストレージ自動保存 ---
+        function saveToLocalStorage() {
+            const localData = {
+                gridW: gridW,
+                gridH: gridH,
+                gridData: gridData,
+                recentColors: recentColors,
+                currentColor: currentColor
+            };
+            localStorage.setItem("pixel_art_auto_save_v4_shape", JSON.stringify(localData));
+        }
+
+        function tryLoadFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem("pixel_art_auto_save_v4_shape");
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    if (data.gridW && data.gridH && data.gridData) {
+                        gridW = data.gridW;
+                        gridH = data.gridH;
+                        // 旧形式変換：文字列 or {color,shape} → {shape1,color1,...}
+                        gridData = data.gridData.map(row =>
+                            row.map(cell => {
+                                if (!cell) return null;
+                                if (typeof cell === "string") return { shape1: "rect", color1: cell };
+                                // v3形式 {color, shape}
+                                if (cell.color && cell.shape) return { shape1: cell.shape, color1: cell.color };
+                                // v4形式（そのまま）
+                                return cell;
+                            })
+                        );
+                        
+                        if (data.recentColors) {
+                            recentColors = data.recentColors;
+                            renderRecentColors();
+                        }
+                        if (data.currentColor) {
+                            selectNewColor(data.currentColor);
+                        }
+                        
+                        adjustCanvasSize();
+                        buildCanvas();
+                        updateSelectSizeOption();
+                        
+                        history = [];
+                        historyIndex = -1;
+                        updateHistory();
+                        
+                        showToast("自動復元しました", "history");
+                    }
+                }
+            } catch (e) {
+                console.log("LocalStorage復元失敗", e);
+            }
+        }
+
+        // --- UIトースト表示 ---
+        function showToast(message, iconName = "info") {
+            const toast = document.getElementById("toast");
+            const toastMsg = document.getElementById("toast-message");
+            const toastIcon = document.getElementById("toast-icon");
+
+            toastMsg.textContent = message;
+            toastIcon.setAttribute("data-lucide", iconName);
+            lucide.createIcons({ attrs: { class: 'w-3.5 h-3.5 text-pink-500' } });
+
+            toast.classList.remove("translate-y-20", "opacity-0");
+            toast.classList.add("translate-y-0", "opacity-100");
+
+            setTimeout(() => {
+                toast.classList.remove("translate-y-0", "opacity-100");
+                toast.classList.add("translate-y-20", "opacity-0");
+            }, 3000);
+        }
+
+    </script>
+</body>
+</html>

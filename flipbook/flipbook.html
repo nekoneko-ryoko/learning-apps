@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🎬 パラパラ漫画メーカー</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body, #root { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+    body { background: linear-gradient(135deg, #ffeef8 0%, #fff9e6 25%, #e0f7ff 50%, #f0e6ff 75%, #ffe6f0 100%); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useRef, useEffect, useCallback } = React;
+
+const CW = 560, CH = 400, TW = 86, TH = 62;
+let _fid = 0, _lid = 0, _mid = 0, _oid = 0;
+const nfid = () => ++_fid, nlid = () => ++_lid, nmid = () => ++_mid, noid = () => ++_oid;
+const mkLayer = (n = "レイヤー1") => ({ id: nlid(), name: n, visible: true });
+const mkFrame = () => ({ id: nfid(), layers: [mkLayer()], objects: [] });
+
+function hexRgb(h) { return [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); }
+
+function floodFill(data, w, h, sx, sy, fr, fg, fb) {
+  const si = (sy * w + sx) * 4;
+  const [tr, tg, tb, ta] = [data[si], data[si+1], data[si+2], data[si+3]];
+  if (fr===tr && fg===tg && fb===tb && ta===255) return;
+  const vis = new Uint8Array(w * h), stk = [sy * w + sx];
+  while (stk.length) {
+    const p = stk.pop(); if (vis[p]) continue;
+    const x = p % w, y = (p - x) / w, i = p * 4;
+    if (data[i]!==tr||data[i+1]!==tg||data[i+2]!==tb||data[i+3]!==ta) continue;
+    vis[p]=1; data[i]=fr; data[i+1]=fg; data[i+2]=fb; data[i+3]=255;
+    if (x>0) stk.push(p-1); if (x<w-1) stk.push(p+1);
+    if (y>0) stk.push(p-w); if (y<h-1) stk.push(p+w);
+  }
+}
+
+function normRect(x1, y1, x2, y2) {
+  return { x: Math.min(x1,x2), y: Math.min(y1,y2), w: Math.abs(x2-x1), h: Math.abs(y2-y1) };
+}
+
+const PALETTE = ['#000000','#ffffff','#ff2222','#ff8800','#ffee00','#22cc22',
+                 '#2266ff','#8822ff','#ff44cc','#884400','#888888','#cccccc'];
+
+function App() {
+  const [frames, setFrames] = useState(() => [mkFrame()]);
+  const [fi, setFi] = useState(0);
+  const [li, setLi] = useState(0);
+  const [tool, setTool] = useState("pen");
+  const [color, setColor] = useState("#000000");
+  const [sz, setSz] = useState(4);
+  const [fps, setFps] = useState(8);
+  const [playing, setPlaying] = useState(false);
+  const [onion, setOnion] = useState(true);
+  const [gifOk, setGifOk] = useState(false);
+  const [status, setStatus] = useState("準備完了");
+  const [thumbs, setThumbs] = useState({});
+  const [materials, setMaterials] = useState([]);
+  const [selRect, setSelRect] = useState(null);
+  const [stampMat, setStampMat] = useState(null);
+  const [bottomTab, setBTab] = useState('frames');
+  const [selObj, setSelObj] = useState(null);
+
+  const cvs = useRef(null);
+  const ovl = useRef(null);
+  const lcs = useRef({});
+  const drg = useRef(false);
+  const lxy = useRef(null);
+  const selStart = useRef(null);
+  const undoMap = useRef({});
+  const pt = useRef(null);
+  const imgCache = useRef({});
+
+  const FR = useRef(frames); useEffect(() => { FR.current = frames; }, [frames]);
+  const FI = useRef(fi); useEffect(() => { FI.current = fi; }, [fi]);
+  const LI = useRef(li); useEffect(() => { LI.current = li; }, [li]);
+  const CR = useRef(color); useEffect(() => { CR.current = color; }, [color]);
+  const SR = useRef(sz); useEffect(() => { SR.current = sz; }, [sz]);
+  const TR = useRef(tool); useEffect(() => { TR.current = tool; }, [tool]);
+  const OR = useRef(onion); useEffect(() => { OR.current = onion; }, [onion]);
+  const SM = useRef(stampMat); useEffect(() => { SM.current = stampMat; }, [stampMat]);
+  const SEL = useRef(selRect); useEffect(() => { SEL.current = selRect; }, [selRect]);
+  const SOB = useRef(selObj); useEffect(() => { SOB.current = selObj; }, [selObj]);
+
+  useEffect(() => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js';
+    s.onload = () => setGifOk(true);
+    document.head.appendChild(s);
+    return () => { try { document.head.removeChild(s); } catch {} };
+  }, []);
+
+  useEffect(() => {
+    materials.forEach(m => {
+      if (!imgCache.current[m.id]) {
+        const img = new Image(); img.src = m.dataURL; imgCache.current[m.id] = img;
+      }
+    });
+  }, [materials]);
+
+  const glc = useCallback((fid, lid) => {
+    const k = `${fid}_${lid}`;
+    if (!lcs.current[k]) {
+      const c = document.createElement('canvas'); c.width = CW; c.height = CH;
+      lcs.current[k] = c;
+    }
+    return lcs.current[k];
+  }, []);
+
+  const comp = useCallback((frame, ctx, wo, prev) => {
+    ctx.clearRect(0, 0, CW, CH);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, CW, CH);
+    if (wo && prev) {
+      ctx.globalAlpha = 0.25;
+      prev.layers.forEach(l => {
+        if (!l.visible) return;
+        const c = lcs.current[`${prev.id}_${l.id}`]; if (c) ctx.drawImage(c, 0, 0);
+      });
+      ctx.globalAlpha = 1;
+    }
+    frame.layers.forEach(l => {
+      if (!l.visible) return;
+      const c = lcs.current[`${frame.id}_${l.id}`]; if (c) ctx.drawImage(c, 0, 0);
+    });
+    
+    // Draw material objects
+    if (frame.objects && frame.objects.length > 0) {
+      frame.objects.forEach(obj => {
+        const mat = materials.find(m => m.id === obj.materialId);
+        if (!mat) return;
+        const img = imgCache.current[mat.id];
+        if (!img || !img.complete) return;
+        ctx.save();
+        ctx.translate(obj.x, obj.y);
+        ctx.rotate((obj.rotation || 0) * Math.PI / 180);
+        ctx.drawImage(img, -mat.w/2, -mat.h/2, mat.w, mat.h);
+        ctx.restore();
+      });
+    }
+  }, [materials]);
+
+  const rerender = useCallback(() => {
+    if (!cvs.current) return;
+    const frame = FR.current[FI.current]; if (!frame) return;
+    const prev = FI.current > 0 ? FR.current[FI.current - 1] : null;
+    comp(frame, cvs.current.getContext('2d'), OR.current, prev);
+  }, [comp]);
+
+  const mkThumb = useCallback((frame) => {
+    const tc = document.createElement('canvas'); tc.width = CW; tc.height = CH;
+    comp(frame, tc.getContext('2d'), false, null);
+    setThumbs(p => ({ ...p, [frame.id]: tc.toDataURL('image/png', 0.4) }));
+  }, [comp]);
+
+  useEffect(() => { rerender(); }, [fi, li, frames, onion, rerender]);
+  useEffect(() => { if (frames[fi]) mkThumb(frames[fi]); }, [fi, frames, mkThumb]);
+
+  const drawOverlay = useCallback((liveRect = null, stampPos = null) => {
+    const oc = ovl.current; if (!oc) return;
+    const ctx = oc.getContext('2d');
+    ctx.clearRect(0, 0, CW, CH);
+
+    const rect = liveRect || (TR.current === 'select' ? SEL.current : null);
+    if (rect && rect.w > 2 && rect.h > 2) {
+      ctx.save();
+      ctx.setLineDash([6, 3]);
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#ff6b9d';
+      ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
+      ctx.fillStyle = 'rgba(255,107,157,0.09)';
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.restore();
+    }
+
+    if (stampPos && SM.current && TR.current === 'stamp') {
+      const mat = SM.current;
+      const img = imgCache.current[mat.id];
+      if (img) {
+        const px = Math.round(stampPos.x - mat.w / 2);
+        const py = Math.round(stampPos.y - mat.h / 2);
+        ctx.globalAlpha = 0.65;
+        if (img.complete) ctx.drawImage(img, px, py, mat.w, mat.h);
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = 'rgba(255,107,157,0.9)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(stampPos.x - 9, stampPos.y); ctx.lineTo(stampPos.x + 9, stampPos.y);
+        ctx.moveTo(stampPos.x, stampPos.y - 9); ctx.lineTo(stampPos.x, stampPos.y + 9);
+        ctx.stroke();
+      }
+    }
+
+    // Draw selected object outline
+    if (SOB.current && TR.current === 'select') {
+      const obj = SOB.current;
+      const mat = materials.find(m => m.id === obj.materialId);
+      if (mat) {
+        const w = mat.w;
+        const h = mat.h;
+        ctx.save();
+        ctx.translate(obj.x, obj.y);
+        ctx.rotate((obj.rotation || 0) * Math.PI / 180);
+        ctx.strokeStyle = '#ff6b9d';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-w/2, -h/2, w, h);
+        ctx.restore();
+      }
+    }
+  }, [materials]);
+
+  useEffect(() => { drawOverlay(); }, [selRect, stampMat, selObj, drawOverlay]);
+  useEffect(() => {
+    if (tool !== 'select') { setSelRect(null); }
+    if (tool !== 'stamp')  { setStampMat(null); }
+    if (tool !== 'select' && tool !== 'stamp') {
+      const oc = ovl.current; if (oc) oc.getContext('2d').clearRect(0, 0, CW, CH);
+    }
+  }, [tool]);
+
+  const doUndo = useCallback(() => {
+    const frame = FR.current[FI.current]; if (!frame) return;
+    const layer = frame.layers[LI.current]; if (!layer) return;
+    const k = `${frame.id}_${layer.id}`;
+    const snap = undoMap.current[k]; if (!snap) return;
+    glc(frame.id, layer.id).getContext('2d').putImageData(snap, 0, 0);
+    rerender(); mkThumb(frame);
+  }, [glc, rerender, mkThumb]);
+
+  useEffect(() => {
+    const h = e => { if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); doUndo(); } };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [doUndo]);
+
+  const gpos = e => {
+    const c = cvs.current; if (!c) return { x: 0, y: 0 };
+    const r = c.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: Math.max(0, Math.min(CW-1, Math.floor((cx - r.left) * CW / r.width))),
+      y: Math.max(0, Math.min(CH-1, Math.floor((cy - r.top) * CH / r.height)))
+    };
+  };
+
+  const applyStroke = (a, b) => {
+    const frame = FR.current[FI.current]; if (!frame) return;
+    const layer = frame.layers[LI.current]; if (!layer) return;
+    const lc = glc(frame.id, layer.id), ctx = lc.getContext('2d');
+    ctx.globalCompositeOperation = TR.current === 'eraser' ? 'destination-out' : 'source-over';
+    ctx.strokeStyle = CR.current; ctx.lineWidth = SR.current;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(a.x, a.y);
+    ctx.lineTo(a.x === b.x && a.y === b.y ? b.x + 0.01 : b.x, b.y);
+    ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+    if (cvs.current) {
+      const prev = FI.current > 0 ? FR.current[FI.current - 1] : null;
+      comp(frame, cvs.current.getContext('2d'), OR.current, prev);
+    }
+  };
+
+  const onDown = useCallback(e => {
+    if (playing) return; e.preventDefault();
+    const pos = gpos(e);
+    const t = TR.current;
+
+    if (t === 'select') {
+      const frame = FR.current[FI.current];
+      if (frame && frame.objects && frame.objects.length > 0) {
+        for (let i = frame.objects.length - 1; i >= 0; i--) {
+          const obj = frame.objects[i];
+          const mat = materials.find(m => m.id === obj.materialId);
+          if (!mat) continue;
+          const dx = pos.x - obj.x;
+          const dy = pos.y - obj.y;
+          if (Math.abs(dx) < mat.w/2 && Math.abs(dy) < mat.h/2) {
+            setSelObj(obj);
+            drg.current = true;
+            lxy.current = pos;
+            return;
+          }
+        }
+      }
+      selStart.current = pos;
+      drg.current = true;
+      setSelRect(null);
+      return;
+    }
+
+    if (t === 'stamp') {
+      const mat = SM.current; if (!mat) return;
+      const frame = FR.current[FI.current]; if (!frame) return;
+      const newObj = {
+        id: noid(),
+        materialId: mat.id,
+        x: pos.x,
+        y: pos.y,
+        rotation: 0
+      };
+      setFrames(p => p.map((f, i) => i !== FI.current ? f : { ...f, objects: [...(f.objects || []), newObj] }));
+      rerender(); mkThumb(frame);
+      setStatus("✓ 素材を配置しました");
+      return;
+    }
+
+    if (t === 'fill') {
+      const frame = FR.current[FI.current]; if (!frame) return;
+      const layer = frame.layers[LI.current]; if (!layer) return;
+      const tc = document.createElement('canvas'); tc.width = CW; tc.height = CH;
+      comp(frame, tc.getContext('2d'), false, null);
+      const before = tc.getContext('2d').getImageData(0, 0, CW, CH);
+      const after = new ImageData(new Uint8ClampedArray(before.data), CW, CH);
+      const [fr, fg, fb] = hexRgb(CR.current);
+      floodFill(after.data, CW, CH, pos.x, pos.y, fr, fg, fb);
+      const lc = glc(frame.id, layer.id), lctx = lc.getContext('2d');
+      undoMap.current[`${frame.id}_${layer.id}`] = lctx.getImageData(0, 0, CW, CH);
+      const ld = lctx.getImageData(0, 0, CW, CH);
+      for (let i = 0; i < after.data.length; i += 4) {
+        if (after.data[i]!==before.data[i]||after.data[i+1]!==before.data[i+1]||after.data[i+2]!==before.data[i+2]) {
+          ld.data[i]=fr; ld.data[i+1]=fg; ld.data[i+2]=fb; ld.data[i+3]=255;
+        }
+      }
+      lctx.putImageData(ld, 0, 0);
+      rerender(); mkThumb(frame);
+      return;
+    }
+
+    const frame = FR.current[FI.current]; if (!frame) return;
+    const layer = frame.layers[LI.current]; if (!layer) return;
+    undoMap.current[`${frame.id}_${layer.id}`] = glc(frame.id, layer.id).getContext('2d').getImageData(0, 0, CW, CH);
+    drg.current = true; lxy.current = pos;
+    applyStroke(pos, pos);
+  }, [playing, comp, glc, rerender, mkThumb, materials]);
+
+  const onMove = useCallback(e => {
+    e.preventDefault();
+    const pos = gpos(e);
+    const t = TR.current;
+
+    if (t === 'select' && drg.current && SOB.current && lxy.current) {
+      const dx = pos.x - lxy.current.x;
+      const dy = pos.y - lxy.current.y;
+      setSelObj(p => ({ ...p, x: p.x + dx, y: p.y + dy }));
+      lxy.current = pos;
+      rerender();
+      return;
+    }
+
+    if (t === 'select' && drg.current && selStart.current) {
+      drawOverlay(normRect(selStart.current.x, selStart.current.y, pos.x, pos.y), null);
+      return;
+    }
+
+    if (t === 'stamp') { drawOverlay(null, pos); return; }
+    if (!drg.current) return;
+    if (lxy.current) { applyStroke(lxy.current, pos); lxy.current = pos; }
+  }, [drawOverlay]);
+
+  const onUp = useCallback(e => {
+    const t = TR.current;
+    if (t === 'select' && drg.current && SOB.current) {
+      const frame = FR.current[FI.current];
+      if (frame && frame.objects) {
+        setFrames(p => p.map((f, i) => i !== FI.current ? f : {
+          ...f, objects: f.objects.map(o => o.id === SOB.current.id ? SOB.current : o)
+        }));
+        rerender(); mkThumb(frame);
+      }
+      drg.current = false; lxy.current = null;
+      return;
+    }
+    if (t === 'select' && drg.current && selStart.current) {
+      const pos = gpos(e);
+      const r = normRect(selStart.current.x, selStart.current.y, pos.x, pos.y);
+      drg.current = false; selStart.current = null;
+      if (r.w > 4 && r.h > 4) setSelRect(r);
+      else { setSelRect(null); drawOverlay(); }
+      return;
+    }
+    if (!drg.current) return;
+    drg.current = false; lxy.current = null;
+    const f = FR.current[FI.current]; if (f) mkThumb(f);
+  }, [drawOverlay]);
+
+  const onLeave = useCallback(() => {
+    if (TR.current === 'stamp') {
+      const oc = ovl.current; if (oc) oc.getContext('2d').clearRect(0, 0, CW, CH);
+      if (SEL.current) drawOverlay();
+    }
+    if (drg.current && TR.current !== 'select') {
+      drg.current = false; lxy.current = null;
+      const f = FR.current[FI.current]; if (f) mkThumb(f);
+    }
+  }, [drawOverlay]);
+
+  useEffect(() => {
+    if (playing) {
+      let idx = FI.current;
+      pt.current = setInterval(() => {
+        idx = (idx + 1) % FR.current.length;
+        const frame = FR.current[idx];
+        if (cvs.current && frame) comp(frame, cvs.current.getContext('2d'), false, null);
+        FI.current = idx; setFi(idx);
+      }, 1000 / fps);
+    } else { clearInterval(pt.current); rerender(); }
+    return () => clearInterval(pt.current);
+  }, [playing, fps, comp, rerender]);
+
+  const addFrame = () => { const f = mkFrame(); setFrames(p => { const n=[...p]; n.splice(fi+1,0,f); return n; }); setFi(fi+1); setLi(0); };
+  const copyFrame = () => {
+    const src = frames[fi];
+    const nf = { id: nfid(), layers: src.layers.map(l => ({ ...l, id: nlid() })), objects: JSON.parse(JSON.stringify(src.objects || [])) };
+    src.layers.forEach((l, i) => {
+      const sc = lcs.current[`${src.id}_${l.id}`];
+      const dc = document.createElement('canvas'); dc.width=CW; dc.height=CH;
+      if (sc) dc.getContext('2d').drawImage(sc, 0, 0);
+      lcs.current[`${nf.id}_${nf.layers[i].id}`] = dc;
+    });
+    setFrames(p => { const n=[...p]; n.splice(fi+1,0,nf); return n; }); setFi(fi+1); setLi(0);
+  };
+  const delFrame = () => { if (frames.length<=1) return; setFrames(p=>p.filter((_,i)=>i!==fi)); setFi(Math.max(0,fi-1)); setLi(0); };
+  const mvFrame = dir => { const ni=fi+dir; if(ni<0||ni>=frames.length)return; setFrames(p=>{const n=[...p];[n[fi],n[ni]]=[n[ni],n[fi]];return n;}); setFi(ni); };
+
+  const addLayer = () => { const nl=mkLayer(`レイヤー${frames[fi].layers.length+1}`); setFrames(p=>p.map((f,i)=>i!==fi?f:{...f,layers:[...f.layers,nl]})); setLi(frames[fi].layers.length); };
+  const delLayer = () => { if(frames[fi].layers.length<=1)return; setFrames(p=>p.map((f,i)=>i!==fi?f:{...f,layers:f.layers.filter((_,j)=>j!==li)})); setLi(Math.max(0,li-1)); };
+  const togLayer = idx => setFrames(p=>p.map((f,i)=>i!==fi?f:{...f,layers:f.layers.map((l,j)=>j!==idx?l:{...l,visible:!l.visible})}));
+  const cpLayer = () => {
+    const sl=frames[fi].layers[li]; if(!sl) return;
+    const nl={id:nlid(),name:sl.name+"_コピー",visible:true};
+    const dc=document.createElement('canvas'); dc.width=CW; dc.height=CH;
+    const sc=lcs.current[`${frames[fi].id}_${sl.id}`]; if(sc) dc.getContext('2d').drawImage(sc,0,0);
+    lcs.current[`${frames[fi].id}_${nl.id}`]=dc;
+    setFrames(p=>p.map((f,i)=>i!==fi?f:{...f,layers:[...f.layers.slice(0,li+1),nl,...f.layers.slice(li+1)]})); setLi(li+1);
+  };
+  const clrLayer = () => {
+    const frame=frames[fi], layer=frame && frame.layers[li]; if(!layer) return;
+    const lc=glc(frame.id,layer.id), ctx=lc.getContext('2d');
+    undoMap.current[`${frame.id}_${layer.id}`]=ctx.getImageData(0,0,CW,CH);
+    ctx.clearRect(0,0,CW,CH); rerender(); mkThumb(frame);
+  };
+
+  const saveAsMaterial = () => {
+    if (!selRect || selRect.w < 4 || selRect.h < 4) { setStatus("選択範囲がありません"); return; }
+    const frame = frames[fi];
+    const tc = document.createElement('canvas'); tc.width=CW; tc.height=CH;
+    comp(frame, tc.getContext('2d'), false, null);
+    const mc = document.createElement('canvas'); mc.width=selRect.w; mc.height=selRect.h;
+    const mctx = mc.getContext('2d');
+    mctx.drawImage(tc, selRect.x, selRect.y, selRect.w, selRect.h, 0, 0, selRect.w, selRect.h);
+    const imgData = mctx.getImageData(0, 0, selRect.w, selRect.h);
+    const data = imgData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] === 255 && data[i+1] === 255 && data[i+2] === 255) { data[i+3] = 0; }
+    }
+    mctx.putImageData(imgData, 0, 0);
+    const id = nmid();
+    const mat = { id, name: "素材 " + id, dataURL: mc.toDataURL('image/png'), w: selRect.w, h: selRect.h };
+    const img = new Image(); img.src = mat.dataURL; imgCache.current[id] = img;
+    setMaterials(p => [...p, mat]);
+    setSelRect(null);
+    const oc = ovl.current; if (oc) oc.getContext('2d').clearRect(0, 0, CW, CH);
+    setBTab('materials');
+    setStatus("✓「" + mat.name + "」を素材に保存しました");
+  };
+
+  const deleteMaterial = id => {
+    setMaterials(p => p.filter(m => m.id !== id));
+    delete imgCache.current[id];
+    if (stampMat && stampMat.id === id) { setStampMat(null); setTool('pen'); }
+  };
+
+  const renameMaterial = (id, name) => setMaterials(p => p.map(m => m.id===id ? {...m,name} : m));
+
+  const activateStamp = mat => {
+    const img = imgCache.current[mat.id] || (() => { const i=new Image(); i.src=mat.dataURL; imgCache.current[mat.id]=i; return i; })();
+    setStampMat(mat);
+    setTool('stamp');
+    setBTab('frames');
+    setStatus("「" + mat.name + "」をスタンプ中");
+  };
+
+  const deleteObj = objId => {
+    const frame = frames[fi];
+    setFrames(p => p.map((f, i) => i !== fi ? f : { ...f, objects: f.objects.filter(o => o.id !== objId) }));
+    setSelObj(null);
+    rerender(); mkThumb(frame);
+    setStatus("素材を削除しました");
+  };
+
+  const copyObj = obj => {
+    const newObj = { ...obj, id: noid() };
+    const frame = frames[fi];
+    setFrames(p => p.map((f, i) => i !== fi ? f : { ...f, objects: [...f.objects, newObj] }));
+    setSelObj(newObj);
+    rerender(); mkThumb(frame);
+  };
+
+  const rotateObj = (obj, deg) => {
+    const newObj = { ...obj, rotation: (obj.rotation || 0) + deg };
+    setSelObj(newObj);
+    const frame = frames[fi];
+    setFrames(p => p.map((f, i) => i !== fi ? f : { ...f, objects: f.objects.map(o => o.id === obj.id ? newObj : o) }));
+    rerender(); mkThumb(frame);
+  };
+
+  const expGif = () => {
+    if (!gifOk || !window.GIF) { setStatus("gif.js 読込中..."); return; }
+    setStatus("GIF 生成中...");
+    const gif = new window.GIF({ workers:2, quality:10, width:CW, height:CH, workerScript:'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js' });
+    const tc=document.createElement('canvas'); tc.width=CW; tc.height=CH; const tctx=tc.getContext('2d');
+    frames.forEach(f => { comp(f,tctx,false,null); gif.addFrame(tc,{delay:Math.round(1000/fps),copy:true}); });
+    gif.on('finished', blob => { const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='animation.gif'; a.click(); setStatus("✓ GIF 完了"); });
+    gif.on('error', () => setStatus("✗ GIF エラー"));
+    gif.render();
+  };
+
+  const expVid = async () => {
+    setStatus("動画生成中...");
+    const tc=document.createElement('canvas'); tc.width=CW; tc.height=CH; const tctx=tc.getContext('2d');
+    const stream=tc.captureStream();
+    const mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';
+    const mr=new MediaRecorder(stream,{mimeType:mime}); const cks=[];
+    mr.ondataavailable=e=>cks.push(e.data);
+    mr.onstop=()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(cks,{type:'video/webm'})); a.download='animation.webm'; a.click(); setStatus("✓ 動画完了"); };
+    mr.start();
+    for (const f of frames) { comp(f,tctx,false,null); await new Promise(r=>setTimeout(r,1000/fps)); }
+    await new Promise(r=>setTimeout(r,200)); mr.stop();
+  };
+
+  const save = () => {
+    const d = { version: 3, fps, frames: frames.map(f => ({...f, layers: f.layers.map(l => ({...l, data: (lcs.current[`${f.id}_${l.id}`] || null) && lcs.current[`${f.id}_${l.id}`].toDataURL('image/png') || null}))})), materials };
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([JSON.stringify(d)],{type:'application/json'}));
+    a.download='flipbook.json'; a.click(); setStatus("✓ 保存完了");
+  };
+
+  const load = () => {
+    const inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
+    inp.onchange=e=>{
+      const file=e.target.files[0]; if(!file) return;
+      const rd=new FileReader();
+      rd.onload=ev=>{
+        try {
+          const d=JSON.parse(ev.target.result); if(!d.frames) throw 0;
+          setFps(d.fps||8);
+          const lf=d.frames.map(f=>({id:f.id,layers:f.layers.map(l=>({id:l.id,name:l.name,visible:l.visible})),objects:f.objects||[]}));
+          _fid=Math.max(_fid,...d.frames.map(f=>f.id));
+          _lid=Math.max(_lid,...d.frames.flatMap(f=>f.layers.map(l=>l.id)));
+          Promise.all(d.frames.flatMap(f=>f.layers.map(l=>new Promise(res=>{
+            if(!l.data){res();return;}
+            const img=new Image(); img.onload=()=>{const c=document.createElement('canvas');c.width=CW;c.height=CH;c.getContext('2d').drawImage(img,0,0);lcs.current[`${f.id}_${l.id}`]=c;res();};img.onerror=res;img.src=l.data;
+          })))).then(()=>{
+            setFrames(lf); setFi(0); setLi(0);
+            if (d.materials && d.materials.length) {
+              _mid=Math.max(_mid,...d.materials.map(m=>m.id));
+              d.materials.forEach(m=>{const i=new Image();i.src=m.dataURL;imgCache.current[m.id]=i;});
+              setMaterials(d.materials);
+            }
+            setStatus("✓ 読込完了");
+          });
+        } catch { setStatus("✗ 読込エラー"); }
+      };
+      rd.readAsText(file);
+    };
+    inp.click();
+  };
+
+  const frame = frames[fi] || frames[0];
+  const layers = frame && frame.layers || [];
+  const cursorStyle = tool === 'stamp' ? 'none' : 'crosshair';
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100vh', background:'linear-gradient(135deg, #ffeef8 0%, #fff9e6 25%, #e0f7ff 50%, #f0e6ff 75%, #ffe6f0 100%)', color:'#333', fontFamily:'system-ui,-apple-system,sans-serif', overflow:'hidden', userSelect:'none' }}>
+
+      <div style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', background:'rgba(255,255,255,0.8)', borderBottom:'1px solid rgba(0,0,0,0.1)', flexShrink:0 }}>
+        <span style={{ fontSize:14, fontWeight:800, color:'#ff6b9d', marginRight:4 }}>🎬 パラパラ漫画</span>
+        <Btn onClick={save}>💾 保存</Btn>
+        <Btn onClick={load}>📂 開く</Btn>
+        <Sep />
+        <Btn onClick={() => setPlaying(p => !p)} hi={playing}>{playing ? '⏹ 停止' : '▶ 再生'}</Btn>
+        <label style={{ fontSize:11, color:'#667' }}>fps</label>
+        <input type="number" min={1} max={30} value={fps} onChange={e => setFps(+e.target.value)}
+          style={{ width:36, background:'white', border:'1px solid #ddd', color:'#333', borderRadius:4, padding:'2px 4px', fontSize:11 }} />
+        <Sep />
+        <Btn onClick={expGif} disabled={!gifOk}>🖼 GIF</Btn>
+        <Btn onClick={expVid}>🎞 動画</Btn>
+        <div style={{ flex:1 }} />
+        {tool === 'select' && selRect && selRect.w > 4 && (
+          <Btn onClick={saveAsMaterial} hi>📌 素材に保存</Btn>
+        )}
+        {tool === 'stamp' && (
+          <Btn onClick={() => { setTool('pen'); setStampMat(null); }}>✕ 解除</Btn>
+        )}
+        <Btn onClick={doUndo}>↩ 元に戻す</Btn>
+        <span style={{ fontSize:10, color:'#667', minWidth:80, textAlign:'right' }}>{status}</span>
+      </div>
+
+      <div style={{ display:'flex', flex:1, overflow:'hidden', minHeight:0 }}>
+
+        <div style={{ width:54, display:'flex', flexDirection:'column', alignItems:'center', gap:4, padding:'8px 4px', background:'rgba(255,255,255,0.5)', borderRight:'1px solid rgba(0,0,0,0.1)', flexShrink:0, overflowY:'auto' }}>
+          {[['pen','✏️','ペン'],['eraser','⬜','消しゴム'],['fill','🪣','塗りつぶし'],['select','□','選択・操作']].map(([t, ic, lb]) => (
+            <TBtn key={t} active={tool === t} onClick={() => setTool(t)} title={lb}>{ic}</TBtn>
+          ))}
+          {stampMat && <TBtn active={tool==='stamp'} onClick={()=>setTool('stamp')} title={stampMat.name} style={{ background: '#ff6b9d' }}>🖼</TBtn>}
+          <HR />
+          <div style={{ position:'relative' }}>
+            <div onClick={() => document.getElementById('cpk').click()}
+              style={{ width:32, height:32, borderRadius:8, background:color, border:'2px solid #ddd', cursor:'pointer' }} />
+            <input id="cpk" type="color" value={color} onChange={e => setColor(e.target.value)}
+              style={{ position:'absolute', opacity:0, width:1, height:1, pointerEvents:'none' }} />
+          </div>
+          <HR />
+          <span style={{ fontSize:9, color:'#667' }}>太さ</span>
+          <input type="range" min={1} max={60} value={sz} onChange={e => setSz(+e.target.value)}
+            style={{ width:38, accentColor:'#ff6b9d' }} />
+          <span style={{ fontSize:11, fontWeight:700, color:'#888' }}>{sz}px</span>
+          <HR />
+          <TBtn active={onion} onClick={() => setOnion(v => !v)} title="オニオンスキン"
+            style={{ background:onion?'#ffe6f0':'transparent', color:onion?'#ff6b9d':'#bbb' }}>👁</TBtn>
+          <button onClick={clrLayer}
+            style={{ width:44, padding:'3px 2px', background:'#ffe6f0', border:'1px solid #ffb3d9', borderRadius:6, color:'#c44569', cursor:'pointer', fontSize:9, marginTop:2 }}>
+            クリア
+          </button>
+        </div>
+
+        <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', overflow:'hidden', background:'white', gap:6, padding:8 }}>
+          <div style={{ display:'flex', gap:4, padding:'5px 10px', background:'rgba(255,255,255,0.8)', borderRadius:20, flexWrap:'wrap', justifyContent:'center', maxWidth:'100%' }}>
+            {PALETTE.map(c => (
+              <button key={c} onClick={() => setColor(c)}
+                style={{ width:20, height:20, borderRadius:'50%', background:c, border:color===c?'2.5px solid #ff6b9d':'2px solid #ddd', cursor:'pointer', padding:0, flexShrink:0, boxShadow:color===c?'0 0 8px rgba(255,107,157,0.5)':undefined }} />
+            ))}
+          </div>
+          <div style={{ position:'relative', display:'inline-block', maxWidth:'100%', maxHeight:'calc(100% - 54px)', lineHeight:0 }}>
+            <canvas ref={cvs} width={CW} height={CH}
+              style={{ display:'block', maxWidth:'100%', maxHeight:'100%', border:'3px solid #fff', borderRadius:4, cursor:cursorStyle, touchAction:'none', background:'white', boxShadow:'0 4px 12px rgba(0,0,0,0.1)' }}
+              onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onLeave}
+              onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp} />
+            <canvas ref={ovl} width={CW} height={CH}
+              style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', pointerEvents:'none', borderRadius:3 }} />
+          </div>
+          {selObj && tool === 'select' && (
+            <div style={{ display:'flex', gap:8, marginTop:12, alignItems:'center', background:'rgba(255,107,157,0.1)', padding:'8px 12px', borderRadius:12, border:'1px solid rgba(255,107,157,0.3)' }}>
+              <button onClick={() => rotateObj(selObj, -15)} style={{ padding:'4px 8px', background:'#ff6b9d', color:'white', border:'none', borderRadius:6, fontSize:11, cursor:'pointer', fontWeight:600 }}>↻ -15°</button>
+              <button onClick={() => rotateObj(selObj, 15)} style={{ padding:'4px 8px', background:'#ff6b9d', color:'white', border:'none', borderRadius:6, fontSize:11, cursor:'pointer', fontWeight:600 }}>↻ +15°</button>
+              <button onClick={() => copyObj(selObj)} style={{ padding:'4px 8px', background:'#ffa500', color:'white', border:'none', borderRadius:6, fontSize:11, cursor:'pointer', fontWeight:600 }}>⊕ コピー</button>
+              <button onClick={() => deleteObj(selObj.id)} style={{ padding:'4px 8px', background:'#ff4466', color:'white', border:'none', borderRadius:6, fontSize:11, cursor:'pointer', fontWeight:600 }}>✕ 削除</button>
+            </div>
+          )}
+        </div>
+
+        <div style={{ width:145, background:'rgba(255,255,255,0.5)', borderLeft:'1px solid rgba(0,0,0,0.1)', display:'flex', flexDirection:'column', flexShrink:0 }}>
+          <div style={{ padding:'6px', borderBottom:'1px solid rgba(0,0,0,0.1)' }}>
+            <div style={{ fontSize:10, fontWeight:700, color:'#667', letterSpacing:1, marginBottom:5 }}>LAYERS</div>
+            <div style={{ display:'flex', gap:2 }}>
+              <SB onClick={addLayer} title="追加">＋</SB>
+              <SB onClick={cpLayer} title="コピー">⊕</SB>
+              <SB onClick={delLayer} disabled={layers.length <= 1} title="削除">−</SB>
+            </div>
+          </div>
+          <div style={{ flex:1, overflowY:'auto' }}>
+            {[...layers].reverse().map((l, ri) => {
+              const ai = (layers.length - 1) - ri;
+              return (
+                <div key={l.id} onClick={() => setLi(ai)}
+                  style={{ display:'flex', alignItems:'center', gap:4, padding:'5px 6px', cursor:'pointer', background:ai===li?'rgba(255,107,157,0.15)':'transparent', borderLeft:ai===li?'3px solid #ff6b9d':'3px solid transparent', transition:'all 0.1s' }}>
+                  <button onClick={ev => { ev.stopPropagation(); togLayer(ai); }}
+                    style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, lineHeight:1, color:l.visible?'#333':'#bbb', padding:0, flexShrink:0 }}>
+                    {l.visible ? '●' : '○'}
+                  </button>
+                  <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:11, color:ai===li?'#ff6b9d':'#666' }}>
+                    {l.name}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ background:'rgba(255,255,255,0.6)', borderTop:'1px solid rgba(0,0,0,0.1)', flexShrink:0 }}>
+        <div style={{ display:'flex', borderBottom:'1px solid rgba(0,0,0,0.1)' }}>
+          <TabBtn active={bottomTab==='frames'} onClick={() => setBTab('frames')}>🎞 フレーム ({frames.length})</TabBtn>
+          <TabBtn active={bottomTab==='materials'} onClick={() => setBTab('materials')}>🗂 素材{materials.length > 0 ? " (" + materials.length + ")" : ""}</TabBtn>
+        </div>
+
+        {bottomTab === 'frames' && (
+          <div style={{ height:100, display:'flex', alignItems:'center', gap:4, padding:'5px 8px', overflowX:'auto' }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:2, flexShrink:0, marginRight:6 }}>
+              <SB onClick={addFrame}>＋ 追加</SB>
+              <SB onClick={copyFrame}>⊕ コピー</SB>
+              <div style={{ display:'flex', gap:2 }}>
+                <SB onClick={() => mvFrame(-1)} disabled={fi === 0}>◀</SB>
+                <SB onClick={() => mvFrame(1)} disabled={fi === frames.length - 1}>▶</SB>
+              </div>
+              <SB onClick={delFrame} disabled={frames.length <= 1} style={{ color:'#c44569' }}>✕ 削除</SB>
+            </div>
+            <div style={{ width:1, height:80, background:'rgba(0,0,0,0.1)', flexShrink:0, marginRight:2 }} />
+            {frames.map((f, i) => (
+              <div key={f.id} onClick={() => { if (!playing) { setFi(i); setLi(0); } }}
+                style={{ width:TW, flexShrink:0, cursor:'pointer', border:i===fi?'2px solid #ff6b9d':'2px solid #ddd', borderRadius:4, overflow:'hidden', background:'#f5f5f8', position:'relative', boxShadow:'0 2px 4px rgba(0,0,0,0.08)' }}>
+                <div style={{ height:TH, overflow:'hidden', background:'#f5f5f8' }}>
+                  {thumbs[f.id] && <img src={thumbs[f.id]} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />}
+                </div>
+                <div style={{ background:i===fi?'#ff6b9d':'white', color:i===fi?'white':'#333', textAlign:'center', fontSize:9, fontWeight:700, padding:'2px 0', lineHeight:1.5 }}>
+                  {i + 1}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {bottomTab === 'materials' && (
+          <div style={{ height:100, display:'flex', alignItems:'flex-start', gap:8, padding:'8px 12px', overflowX:'auto', overflowY:'hidden' }}>
+            {materials.length === 0 ? (
+              <div style={{ color:'#999', fontSize:11, padding:'12px 6px', lineHeight:1.8, flexShrink:0 }}>
+                選択ツールで範囲を選び<br/>「📌 素材に保存」で登録
+              </div>
+            ) : materials.map(mat => (
+              <div key={mat.id} style={{ flexShrink:0, display:'flex', flexDirection:'column', gap:3, alignItems:'center', width:90 }}>
+                <div onClick={() => activateStamp(mat)}
+                  style={{ width:82, height:58, background:'#e8e8ee', backgroundImage:'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\'%3E%3Crect width=\'8\' height=\'8\' fill=\'%23ccc\'/%3E%3Crect x=\'8\' y=\'8\' width=\'8\' height=\'8\' fill=\'%23ccc\'/%3E%3C/svg%3E")', backgroundSize:'8px 8px', border:stampMat && stampMat.id===mat.id?'2.5px solid #ff6b9d':'2px solid #ddd', borderRadius:5, overflow:'hidden', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:stampMat && stampMat.id===mat.id?'0 0 12px rgba(255,107,157,0.5)':undefined, transition:'all 0.15s', flexShrink:0 }}>
+                  <img src={mat.dataURL} alt={mat.name} style={{ maxWidth:'100%', maxHeight:'100%', objectFit:'contain', display:'block' }} />
+                </div>
+                <input value={mat.name} onChange={e => renameMaterial(mat.id, e.target.value)}
+                  onClick={e => e.stopPropagation()}
+                  style={{ width:84, fontSize:9, background:'transparent', border:'none', color:stampMat && stampMat.id===mat.id?'#ff6b9d':'#666', textAlign:'center', outline:'none', padding:'1px 2px', cursor:'text' }} />
+                <div style={{ display:'flex', gap:2 }}>
+                  <button onClick={() => activateStamp(mat)}
+                    style={{ fontSize:9, padding:'2px 6px', border:'none', borderRadius:3, background:stampMat && stampMat.id===mat.id?'#ff6b9d':'#ffb3d9', color:'white', cursor:'pointer', fontWeight:stampMat && stampMat.id===mat.id?700:400 }}>
+                    {stampMat && stampMat.id===mat.id ? '使用中' : 'スタンプ'}
+                  </button>
+                  <button onClick={() => deleteMaterial(mat.id)}
+                    style={{ fontSize:9, padding:'2px 4px', border:'none', borderRadius:3, background:'#ffb3d9', color:'#c44569', cursor:'pointer' }}>✕</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TBtn({ children, active, onClick, title, style: s }) {
+  return <button onClick={onClick} title={title} style={{ width:42, height:42, border:'none', borderRadius:9, background:active?'#ff6b9d':'white', color:active?'white':'#333', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:active?'0 2px 8px rgba(255,107,157,0.3)':'0 2px 4px rgba(0,0,0,0.08)', ...s }}>{children}</button>;
+}
+function Btn({ children, onClick, hi, disabled }) {
+  return <button onClick={onClick} disabled={disabled} style={{ padding:'4px 8px', border:'none', borderRadius:5, background:hi?'#ff6b9d':disabled?'#eee':'white', color:disabled?'#bbb':hi?'white':'#333', fontSize:11, cursor:disabled?'default':'pointer', fontWeight:600, whiteSpace:'nowrap', boxShadow:'0 2px 4px rgba(0,0,0,0.08)' }}>{children}</button>;
+}
+function SB({ children, onClick, disabled, title, style: s }) {
+  return <button onClick={onClick} disabled={disabled} title={title} style={{ padding:'2px 6px', border:'none', borderRadius:4, background:disabled?'#eee':'white', color:disabled?'#bbb':'#333', fontSize:11, cursor:disabled?'default':'pointer', ...s }}>{children}</button>;
+}
+function TabBtn({ children, active, onClick }) {
+  return <button onClick={onClick} style={{ padding:'5px 14px', border:'none', background:'transparent', color:active?'#ff6b9d':'#999', fontSize:11, fontWeight:active?700:400, cursor:'pointer', borderBottom:active?'2px solid #ff6b9d':'2px solid transparent', transition:'all 0.15s', whiteSpace:'nowrap' }}>{children}</button>;
+}
+function Sep() { return <div style={{ width:1, height:20, background:'rgba(0,0,0,0.1)', margin:'0 2px' }} />; }
+function HR() { return <div style={{ height:1, width:38, background:'rgba(0,0,0,0.1)', margin:'2px 0' }} />; }
+
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

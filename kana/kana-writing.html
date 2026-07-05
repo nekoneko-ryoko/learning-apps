@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>かなかき練習</title>
+<link href="https://fonts.googleapis.com/css2?family=Klee+One&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --pink:#ff6b9d;--pink-l:#ffe0ee;
+  --blue:#5ba8ff;--blue-l:#deeeff;
+  --yellow:#ffce47;--green:#47cc8a;
+  --gray:#aaa;--text:#333;
+  --bg:#fffdf5;--card:#fff;
+}
+body{
+  font-family:'Klee One','Hiragino Kaku Gothic ProN',sans-serif;
+  background:var(--bg);color:var(--text);
+  height:100dvh;display:flex;flex-direction:column;overflow:hidden;
+}
+header{
+  background:var(--pink);padding:6px 12px;
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+  box-shadow:0 2px 6px rgba(255,107,157,.3);
+}
+header h1{color:#fff;font-size:1rem;flex:1}
+
+/* ===== レイアウト ===== */
+.layout{
+  flex:1;display:flex;gap:8px;padding:8px;overflow:hidden;min-height:0;
+}
+
+/* 左：練習エリア */
+.left-panel{
+  display:flex;flex-direction:column;gap:6px;flex-shrink:0;
+  overflow-y:auto;max-height:100%;
+}
+
+/* スマホ幅（横が狭い）では上下分割レイアウトに切り替え */
+@media (max-width: 700px) {
+  .layout{
+    display:block !important;
+    overflow-y:auto !important;
+    height:auto !important;
+  }
+  .left-panel{
+    display:flex !important;
+    flex-direction:column;
+    align-items:center;
+    overflow:visible !important;
+    max-height:none !important;
+    margin-bottom:10px;
+  }
+  .right-panel{
+    display:block !important;
+    overflow:visible !important;
+    min-width:0 !important;
+    width:100%;
+  }
+  .char-scroll{
+    flex:none !important;
+    height:340px !important;
+    max-height:340px !important;
+    overflow-y:scroll !important;
+    min-height:0 !important;
+    -webkit-overflow-scrolling:touch;
+  }
+  body{
+    overflow-y:auto !important;
+    height:auto !important;
+    min-height:100dvh;
+  }
+}
+
+/* モードトグル */
+.mode-toggle{
+  display:flex;border-radius:10px;overflow:hidden;
+  border:2px solid var(--pink-l);flex-shrink:0;
+}
+.mode-btn{
+  flex:1;padding:5px 6px;border:none;background:#fdf0f5;
+  font-family:inherit;font-size:0.72rem;font-weight:bold;
+  cursor:pointer;color:var(--gray);transition:all .15s;
+}
+.mode-btn.active-anim{background:var(--pink);color:#fff}
+.mode-btn.active-trace{background:var(--blue);color:#fff}
+
+/* キャンバス共通 */
+.canvas-wrap{
+  position:relative;border-radius:12px;overflow:hidden;flex-shrink:0;
+  border:3px solid var(--pink-l);background:#fffdf5;
+}
+canvas{position:absolute;inset:0;width:100%;height:100%}
+#cv-guide{z-index:1}
+#cv-anim{z-index:2}
+#cv-trace{z-index:3;touch-action:none}
+
+/* 情報行 */
+.info-row{
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.stroke-label{font-size:0.7rem;color:var(--gray)}
+.score-msg{font-size:0.72rem;color:var(--green);font-weight:bold;flex:1;text-align:center}
+
+/* ボタン行 */
+.btn-row{display:flex;gap:5px;flex-shrink:0}
+.s-btn{
+  flex:1;padding:6px 4px;border:none;border-radius:9px;
+  font-family:inherit;font-size:0.72rem;font-weight:bold;
+  cursor:pointer;transition:all .12s;
+}
+.s-btn:active{transform:scale(.94)}
+.btn-pink{background:var(--pink);color:#fff}
+.btn-yellow{background:var(--yellow);color:#333}
+.btn-green{background:var(--green);color:#fff}
+.btn-gray{background:#eee;color:#666}
+
+/* ===== 右：文字選択 ===== */
+.right-panel{
+  flex:1;display:flex;flex-direction:column;gap:6px;overflow:hidden;min-height:0;min-width:280px;
+}
+
+/* ひら/カタタブ */
+.kana-tabs{display:flex;gap:4px;flex-shrink:0}
+.kana-tab{
+  flex:1;padding:5px;border:2px solid #e0e0e0;border-radius:8px;
+  background:#f5f5f5;font-family:inherit;font-size:0.75rem;
+  cursor:pointer;color:var(--gray);transition:all .15s;
+}
+.kana-tab.active{background:var(--pink);border-color:var(--pink);color:#fff;font-weight:bold}
+
+/* 行グリッド */
+.row-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));
+  gap:4px;flex-shrink:0;
+}
+.row-btn{
+  padding:5px 4px;border:2px solid #ddd;border-radius:8px;
+  background:#fff;font-family:inherit;font-size:0.7rem;
+  cursor:pointer;color:var(--text);transition:all .12s;text-align:center;
+  max-height:34px;
+}
+.row-btn:active,.row-btn.sel{background:var(--blue-l);border-color:var(--blue)}
+.row-btn.dk{border-color:#d4b8f0}
+
+/* 五十音順ナビ */
+.seq-bar{
+  display:none;align-items:center;gap:4px;
+  background:var(--blue-l);border-radius:9px;padding:4px 6px;flex-shrink:0;
+}
+.seq-bar.show{display:flex}
+.seq-big{font-size:1.6rem;flex:1;text-align:center;color:var(--pink);font-weight:bold}
+.seq-btn{
+  width:30px;height:30px;border:none;border-radius:7px;
+  background:var(--blue);color:#fff;font-size:0.9rem;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.seq-btn:disabled{background:#ccc}
+.seq-go{
+  padding:0 8px;background:var(--pink);color:#fff;
+  font-family:inherit;font-size:0.7rem;font-weight:bold;
+  border:none;border-radius:7px;height:30px;cursor:pointer;flex-shrink:0;
+}
+
+/* 文字グリッド */
+.char-scroll{flex:1;overflow-y:auto;min-height:0}
+.char-grid{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:2px 0;
+}
+.c-btn{
+  aspect-ratio:1;border:2px solid #e8e8e8;border-radius:8px;
+  background:#fff;font-size:1.05rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text);transition:all .12s;
+}
+.c-btn:active{transform:scale(.9);background:var(--pink-l);border-color:var(--pink)}
+.c-btn.sel{background:var(--pink-l);border-color:var(--pink);font-weight:bold}
+.c-btn.empty{border:none;background:transparent;cursor:default}
+.c-btn.dk{border-color:#d4b8f0}
+
+/* 前後ナビ */
+.nav-row{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.nav-ch{font-size:0.85rem;color:var(--pink);font-weight:bold;flex:1;text-align:center}
+.n-btn{
+  padding:4px 8px;border:1px solid #ddd;border-radius:7px;
+  background:#f5f5f5;font-size:0.7rem;cursor:pointer;color:#666;
+}
+.n-btn:disabled{opacity:.3;cursor:default}
+
+/* ローディング・エラー */
+.loading{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:8px;
+  background:rgba(255,253,245,.9);z-index:10;
+  font-size:0.75rem;color:var(--gray);
+}
+.spinner{
+  width:28px;height:28px;border:3px solid var(--pink-l);
+  border-top-color:var(--pink);border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,253,245,.9);z-index:10;
+  font-size:0.72rem;color:#c00;text-align:center;padding:12px;
+}
+/* スピードボタン */
+.spd-btn{
+  flex:1;padding:5px 2px;border:2px solid #ddd;border-radius:8px;
+  background:#f5f5f5;font-family:inherit;font-size:0.68rem;
+  cursor:pointer;color:var(--gray);transition:all .12s;
+}
+.spd-btn.sel{background:var(--yellow);border-color:#e6b800;color:#333;font-weight:bold;}
+</style>
+</head>
+<body>
+<header>
+  <h1>✏️ かなかき練習</h1>
+  <div id="hdr-char" style="color:#fff;font-size:1.4rem;font-weight:bold;display:none"></div>
+</header>
+
+<div class="layout">
+
+  <!-- ===== 左：練習エリア ===== -->
+  <div class="left-panel" id="left-panel">
+
+    <!-- モードトグル -->
+    <div class="mode-toggle">
+      <button class="mode-btn active-anim" id="btn-anim" onclick="setMode('anim')">▶ アニメ</button>
+      <button class="mode-btn" id="btn-trace" onclick="setMode('trace')">✏️ なぞる</button>
+    </div>
+
+    <!-- キャンバス -->
+    <div class="canvas-wrap" id="canvas-wrap">
+      <canvas id="cv-guide"></canvas>
+      <canvas id="cv-anim"></canvas>
+      <canvas id="cv-trace"></canvas>
+      <div class="loading" id="loading"><div class="spinner"></div><div>もじをえらんでね</div></div>
+    </div>
+
+    <!-- 情報行 -->
+    <div class="info-row">
+      <span class="stroke-label" id="stroke-label"></span>
+      <span class="score-msg" id="score-msg"></span>
+    </div>
+
+    <!-- アニメボタン -->
+    <div class="btn-row" id="anim-btns">
+      <button class="s-btn btn-yellow" onclick="replayAnim()">▶ もういちど</button>
+    </div>
+    <!-- スピード切り替え -->
+    <div class="btn-row" id="speed-row">
+      <button class="spd-btn sel" id="spd-slow" onclick="setSpeed('slow')">🐢 ゆっくり</button>
+      <button class="spd-btn" id="spd-normal" onclick="setSpeed('normal')">▶ ふつう</button>
+      <button class="spd-btn" id="spd-fast" onclick="setSpeed('fast')">🐇 はやく</button>
+    </div>
+
+    <!-- なぞりボタン -->
+    <div class="btn-row" id="trace-btns" style="display:none">
+      <button class="s-btn btn-gray" onclick="clearTrace()">🗑 けす</button>
+      <button class="s-btn btn-green" onclick="checkTrace()">✓ できた！</button>
+    </div>
+    <!-- 書き順番号トグル -->
+    <div class="btn-row" id="numtoggle-row" style="display:none">
+      <button class="spd-btn sel" id="btn-numtoggle" onclick="toggleStrokeNum()">🔢 書き順をひょうじ</button>
+    </div>
+
+  </div>
+
+  <!-- ===== 右：文字選択エリア ===== -->
+  <div class="right-panel">
+
+    <!-- ひら/カタタブ -->
+    <div class="kana-tabs">
+      <button class="kana-tab active" id="tab-hira" onclick="switchKana('h')">ひらがな</button>
+      <button class="kana-tab" id="tab-kata" onclick="switchKana('k')">カタカナ</button>
+    </div>
+
+    <!-- 行グリッド -->
+    <div class="row-grid" id="row-grid"></div>
+
+    <!-- 五十音順バー -->
+    <div class="seq-bar" id="seq-bar">
+      <button class="seq-btn" id="seq-prev" onclick="seqMove(-1)">◀</button>
+      <div class="seq-big" id="seq-big">あ</div>
+      <button class="seq-btn" id="seq-next" onclick="seqMove(1)">▶</button>
+      <button class="seq-go" onclick="seqGo()">れんしゅう</button>
+    </div>
+
+    <!-- 文字グリッド -->
+    <div class="char-scroll">
+      <div class="char-grid" id="char-grid"></div>
+    </div>
+
+    <!-- 前後ナビ -->
+    <div class="nav-row" id="nav-row" style="display:none">
+      <button class="n-btn" id="nav-prev" onclick="navChar(-1)">◀ まえ</button>
+      <div class="nav-ch" id="nav-ch"></div>
+      <button class="n-btn" id="nav-next" onclick="navChar(1)">つぎ ▶</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============================================================
+// データ定義
+// ============================================================
+const ROWS = {
+  h:[
+    {key:'a', lbl:'あ行', chars:['あ','い','う','え','お']},
+    {key:'ka',lbl:'か行', chars:['か','き','く','け','こ']},
+    {key:'sa',lbl:'さ行', chars:['さ','し','す','せ','そ']},
+    {key:'ta',lbl:'た行', chars:['た','ち','つ','て','と']},
+    {key:'na',lbl:'な行', chars:['な','に','ぬ','ね','の']},
+    {key:'ha',lbl:'は行', chars:['は','ひ','ふ','へ','ほ']},
+    {key:'ma',lbl:'ま行', chars:['ま','み','む','め','も']},
+    {key:'ya',lbl:'や行', chars:['や','ゆ','よ']},
+    {key:'ra',lbl:'ら行', chars:['ら','り','る','れ','ろ']},
+    {key:'wa',lbl:'わ行', chars:['わ','を','ん']},
+    {key:'ga',lbl:'が行', chars:['が','ぎ','ぐ','げ','ご'],dk:true},
+    {key:'za',lbl:'ざ行', chars:['ざ','じ','ず','ぜ','ぞ'],dk:true},
+    {key:'da',lbl:'だ行', chars:['だ','ぢ','づ','で','ど'],dk:true},
+    {key:'ba',lbl:'ば行', chars:['ば','び','ぶ','べ','ぼ'],dk:true},
+    {key:'pa',lbl:'ぱ行', chars:['ぱ','ぴ','ぷ','ぺ','ぽ'],dk:true},
+    {key:'seq',lbl:'じゅんに',seq:true},
+  ],
+  k:[
+    {key:'a', lbl:'ア行', chars:['ア','イ','ウ','エ','オ']},
+    {key:'ka',lbl:'カ行', chars:['カ','キ','ク','ケ','コ']},
+    {key:'sa',lbl:'サ行', chars:['サ','シ','ス','セ','ソ']},
+    {key:'ta',lbl:'タ行', chars:['タ','チ','ツ','テ','ト']},
+    {key:'na',lbl:'ナ行', chars:['ナ','ニ','ヌ','ネ','ノ']},
+    {key:'ha',lbl:'ハ行', chars:['ハ','ヒ','フ','ヘ','ホ']},
+    {key:'ma',lbl:'マ行', chars:['マ','ミ','ム','メ','モ']},
+    {key:'ya',lbl:'ヤ行', chars:['ヤ','ユ','ヨ']},
+    {key:'ra',lbl:'ラ行', chars:['ラ','リ','ル','レ','ロ']},
+    {key:'wa',lbl:'ワ行', chars:['ワ','ヲ','ン']},
+    {key:'ga',lbl:'ガ行', chars:['ガ','ギ','グ','ゲ','ゴ'],dk:true},
+    {key:'za',lbl:'ザ行', chars:['ザ','ジ','ズ','ゼ','ゾ'],dk:true},
+    {key:'da',lbl:'ダ行', chars:['ダ','ヂ','ヅ','デ','ド'],dk:true},
+    {key:'ba',lbl:'バ行', chars:['バ','ビ','ブ','ベ','ボ'],dk:true},
+    {key:'pa',lbl:'パ行', chars:['パ','ピ','プ','ペ','ポ'],dk:true},
+    {key:'seq',lbl:'じゅんに',seq:true},
+  ]
+};
+
+const CDN = 'https://cdn.jsdelivr.net/npm/kana-svg-data/dist';
+const VBOX = 1024; // SVGのviewBox幅
+
+// ============================================================
+// 状態
+// ============================================================
+let kana = 'h';
+let selRow = null;
+let seqAll = [];
+let seqIdx = 0;
+let curChar = '';
+let charData = null;
+let mode = 'anim';   // 'anim'|'trace'
+let animRaf = null;
+let traceDrawing = false;
+let traceMarked = false;
+let cvSize = 240;
+let speedMultiplier = 1.0; // 0.55=ゆっくり, 1.0=ふつう, 1.8=はやく
+let showStrokeNum = true;  // なぞり下絵の書き順番号表示
+
+// ============================================================
+// 起動・リサイズ
+// ============================================================
+window.addEventListener('load', () => {
+  calcSize();
+  buildRowGrid();
+  buildCharGrid([]);
+  buildSeqAll();
+  // デフォルトで「あ」を表示
+  selRow = 'a';
+  buildRowGrid();
+  buildCharGrid(ROWS.h.find(r=>r.key==='a').chars);
+  loadChar('あ', seqAll.indexOf('あ'), { skipAutoplay: true });
+});
+window.addEventListener('resize', () => { calcSize(); if(charData) redrawGuide(); });
+
+function calcSize() {
+  const isMobile = window.innerWidth <= 700;
+
+  // 左パネル内、キャンバス以外の要素（モードトグル・情報行・ボタン行群）の実測高さを合計
+  const modeToggle = document.querySelector('.mode-toggle');
+  const infoRow = document.querySelector('.info-row');
+  const btnRows = document.querySelectorAll('#left-panel .btn-row');
+  const gapCount = 5; // left-panelのgap(6px) × おおよその要素間隔数
+
+  let chromeHeight = (modeToggle?.offsetHeight || 0) + (infoRow?.offsetHeight || 0);
+  btnRows.forEach(row => { chromeHeight += row.offsetHeight; });
+  chromeHeight += gapCount * 6;
+  chromeHeight += 24;
+
+  if(isMobile) {
+    // スマホ：上下分割。キャンバス幅は画面幅基準、高さは画面の中で文字グリッド用に確保した残り
+    const avW = window.innerWidth - 32; // padding分を引く
+    const avH = window.innerHeight * 0.42; // 画面の上40%程度を練習エリアに
+    cvSize = Math.floor(Math.max(160, Math.min(avW, avH, 380)));
+  } else {
+    // タブレット・PC：左右分割。右パネルに最低幅を確保
+    const RIGHT_MIN_WIDTH = 360;
+    const GAP_PADDING = 24;
+    const avH = window.innerHeight - chromeHeight;
+    const avW = Math.min(
+      window.innerWidth - RIGHT_MIN_WIDTH - GAP_PADDING,
+      window.innerWidth * 0.5,
+      520
+    );
+    cvSize = Math.floor(Math.max(160, Math.min(avH, avW, 520)));
+  }
+
+  const wrap = document.getElementById('canvas-wrap');
+  wrap.style.width = cvSize + 'px';
+  wrap.style.height = cvSize + 'px';
+  ['cv-guide','cv-anim','cv-trace'].forEach(id => {
+    const c = document.getElementById(id);
+    c.width = cvSize; c.height = cvSize;
+  });
+}
+
+// ============================================================
+// タブ切り替え
+// ============================================================
+function switchKana(k) {
+  kana = k;
+  document.getElementById('tab-hira').classList.toggle('active', k==='h');
+  document.getElementById('tab-kata').classList.toggle('active', k==='k');
+  selRow = null;
+  buildRowGrid();
+  buildCharGrid([]);
+  buildSeqAll();
+  document.getElementById('seq-bar').classList.remove('show');
+}
+
+// ============================================================
+// 行グリッド
+// ============================================================
+function buildRowGrid() {
+  const rows = ROWS[kana];
+  const grid = document.getElementById('row-grid');
+  grid.innerHTML = '';
+  rows.forEach(row => {
+    const btn = document.createElement('button');
+    btn.className = 'row-btn' + (row.dk?' dk':'') + (row.seq?' ':'') + (selRow===row.key?' sel':'');
+    btn.textContent = row.lbl;
+    if(row.seq) {
+      btn.style.cssText = 'background:#d4f5e4;border-color:#47cc8a;grid-column:span 2;';
+      btn.onclick = () => { selRow='seq'; buildRowGrid(); showSeqBar(); buildCharGrid([]); };
+    } else {
+      btn.onclick = () => {
+        selRow = row.key;
+        buildRowGrid();
+        document.getElementById('seq-bar').classList.remove('show');
+        buildCharGrid(row.chars);
+      };
+    }
+    grid.appendChild(btn);
+  });
+}
+
+// ============================================================
+// 五十音順バー
+// ============================================================
+function buildSeqAll() {
+  seqAll = ROWS[kana].filter(r=>!r.seq).flatMap(r=>r.chars);
+  seqIdx = 0;
+}
+
+function showSeqBar() {
+  buildSeqAll();
+  document.getElementById('seq-bar').classList.add('show');
+  updateSeqBar();
+}
+
+function updateSeqBar() {
+  document.getElementById('seq-big').textContent = seqAll[seqIdx]||'';
+  document.getElementById('seq-prev').disabled = seqIdx <= 0;
+  document.getElementById('seq-next').disabled = seqIdx >= seqAll.length-1;
+}
+
+function seqMove(d) {
+  seqIdx = Math.max(0, Math.min(seqAll.length-1, seqIdx+d));
+  updateSeqBar();
+}
+
+function seqGo() {
+  const ch = seqAll[seqIdx];
+  if(ch) loadChar(ch, seqIdx);
+}
+
+// ============================================================
+// 文字グリッド
+// ============================================================
+function buildCharGrid(chars) {
+  const grid = document.getElementById('char-grid');
+  grid.innerHTML = '';
+  chars.forEach(ch => {
+    const btn = document.createElement('button');
+    btn.className = 'c-btn' + (ch===curChar?' sel':'');
+    btn.textContent = ch;
+    btn.onclick = () => {
+      const idx = seqAll.indexOf(ch);
+      loadChar(ch, idx);
+    };
+    grid.appendChild(btn);
+  });
+}
+
+// ============================================================
+// 文字読み込み＆練習開始
+// ============================================================
+async function loadChar(ch, seqI, opts) {
+  const skipAutoplay = opts && opts.skipAutoplay;
+  if(animRaf){ cancelAnimationFrame(animRaf); animRaf=null; }
+  curChar = ch;
+  seqIdx = seqI >= 0 ? seqI : seqAll.indexOf(ch);
+  charData = null;
+
+  // UI更新
+  document.getElementById('hdr-char').textContent = ch;
+  document.getElementById('hdr-char').style.display = 'block';
+  document.getElementById('stroke-label').textContent = '';
+  document.getElementById('score-msg').textContent = '';
+
+  // 前後ナビ
+  document.getElementById('nav-row').style.display = 'flex';
+  document.getElementById('nav-ch').textContent = ch;
+  document.getElementById('nav-prev').disabled = seqIdx <= 0;
+  document.getElementById('nav-next').disabled = seqIdx >= seqAll.length-1;
+
+  // 選択状態を更新
+  document.querySelectorAll('.c-btn').forEach(b => {
+    b.classList.toggle('sel', b.textContent===ch);
+  });
+
+  showLoading(true);
+
+  const code = ch.codePointAt(0);
+  const isHira = code >= 0x3041 && code <= 0x3096;
+  const folder = isHira ? 'hiragana' : 'katakana';
+  const url = `${CDN}/${folder}/${encodeURIComponent(ch)}.json`;
+
+  try {
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    charData = await res.json();
+    showLoading(false);
+    setMode(mode, skipAutoplay);
+  } catch(e) {
+    showErr('データを読み込めませんでした。\nインターネット接続を確認してください。');
+  }
+}
+
+function navChar(d) {
+  const next = seqIdx + d;
+  if(next < 0 || next >= seqAll.length) return;
+  loadChar(seqAll[next], next);
+}
+
+// ============================================================
+// ローディング・エラー表示
+// ============================================================
+function showLoading(show) {
+  const el = document.getElementById('loading');
+  if(show) {
+    el.innerHTML = '<div class="spinner"></div><div>よみこみ中…</div>';
+    el.style.display = 'flex';
+  } else {
+    el.style.display = 'none';
+  }
+}
+function showErr(msg) {
+  const el = document.getElementById('loading');
+  el.innerHTML = `<div class="err" style="position:static;background:none">${msg}</div>`;
+  el.style.display = 'flex';
+}
+
+// ============================================================
+// モード切り替え
+// ============================================================
+function setMode(m, skipAutoplay) {
+  mode = m;
+  const isAnim = m==='anim';
+  document.getElementById('btn-anim').className = 'mode-btn' + (isAnim?' active-anim':'');
+  document.getElementById('btn-trace').className = 'mode-btn' + (!isAnim?' active-trace':'');
+  document.getElementById('anim-btns').style.display = isAnim?'flex':'none';
+  document.getElementById('speed-row').style.display = isAnim?'flex':'none';
+  document.getElementById('trace-btns').style.display = isAnim?'none':'flex';
+  document.getElementById('numtoggle-row').style.display = isAnim?'none':'flex';
+  document.getElementById('score-msg').textContent = '';
+  clearCanvas('cv-anim');
+  clearCanvas('cv-trace');
+
+  // ボタン行の表示/非表示が変わったのでサイズを再計算（描画前に行う）
+  calcSize();
+
+  if(!charData) return;
+  redrawGuide();
+  if(isAnim) {
+    if(skipAutoplay) {
+      // 自動再生せず「▶ もういちど」待ちの静止状態にする
+      document.getElementById('stroke-label').textContent = 'スタートをおしてね';
+    } else {
+      startAnim();
+    }
+  } else {
+    setupTrace();
+  }
+}
+
+// ============================================================
+// ガイドキャンバス（手本＋グリッド線）
+// ============================================================
+function redrawGuide() {
+  const cv = document.getElementById('cv-guide');
+  const ctx = cv.getContext('2d');
+  const sz = cvSize;
+  ctx.clearRect(0,0,sz,sz);
+
+  // 背景
+  ctx.fillStyle = '#fffdf5';
+  ctx.fillRect(0,0,sz,sz);
+
+  // 升目
+  ctx.strokeStyle = '#ffd0e8';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath();
+  ctx.moveTo(sz/2,0); ctx.lineTo(sz/2,sz);
+  ctx.moveTo(0,sz/2); ctx.lineTo(sz,sz/2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  if(!charData) return;
+
+  // 手本を薄く（medians使用）
+  const sc = sz / VBOX;
+  const strokes = groupStrokes(charData);
+
+  // 手本：各画のmedian1本を薄く描画＋書き始めに番号
+  strokes.forEach((grp, i) => {
+    if(!grp.median) return;
+    const pts = grp.median.map(p=>({x:p[0]*sc, y:p[1]*sc}));
+    drawSmoothLine(ctx, pts, 'rgba(180,210,255,0.45)', sz*0.05, false);
+
+    if(!showStrokeNum) return;
+
+    // 書き始め位置に番号バッジ
+    const start = pts[0];
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(start.x, start.y, sz*0.045, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(91,168,255,0.85)';
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${sz*0.055}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(i+1), start.x, start.y + sz*0.002);
+    ctx.restore();
+  });
+}
+
+// ============================================================
+// ストロークをグループ化（3a,3b → 画番号3としてまとめる）
+// ============================================================
+function groupStrokes(data) {
+  // "3b","1b"など bバリアントはy座標1000超の画面外始点用で不要 → aのみ採用
+  const map = new Map();
+  const order = [];
+  data.strokes.forEach(s => {
+    if(!s.value || !s.value.trim()) return;
+    const id = s.id;
+    const numKey = id.replace(/[a-z]$/, '');
+    const suffix = (id.match(/[a-z]$/) || [''])[0];
+    if(suffix && suffix !== 'a') return;  // b,c... を除外
+    if(!map.has(numKey)) { map.set(numKey, {path:'', median:null}); order.push(numKey); }
+    map.get(numKey).path = s.value;
+    const med = (data.medians || []).find(m => m.id === id);
+    if(med) map.get(numKey).median = med.value;
+  });
+
+  const groups = order.map(k => map.get(k));
+
+  // 濁点・半濁点ストロークを検出して縮小する
+  // 判定基準：3点以下の短い画 かつ 文字全体の右上エリア（x>500, y<500）にある画
+  shrinkDakuten(groups);
+
+  return groups;
+}
+
+// 濁点（゛）・半濁点（゜）の画を検出し、中心基準で縮小する
+function shrinkDakuten(groups) {
+  const SHRINK = 0.6; // 濁点の長さを60%に縮小（誤検出時の影響を抑えるため控えめに）
+  const n = groups.length;
+
+  groups.forEach((g, i) => {
+    const pts = g.median;
+    if(!pts || pts.length < 2) return;
+
+    const xs = pts.map(p=>p[0]), ys = pts.map(p=>p[1]);
+    const w = Math.max(...xs) - Math.min(...xs);
+    const h = Math.max(...ys) - Math.min(...ys);
+    const size = Math.max(w, h);
+    const avgX = xs.reduce((a,b)=>a+b,0) / xs.length;
+
+    // 濁点・半濁点の典型パターン：最後の2画以内、文字の右側、サイズが小さい
+    const isLastTwo = i >= n - 2;
+    const isDakuten = isLastTwo && avgX > 600 && size < 260;
+
+    if(isDakuten) {
+      const cx = pts[0][0], cy = pts[0][1]; // 書き始め点を基準に縮小
+      g.median = pts.map(p => [
+        cx + (p[0]-cx) * SHRINK,
+        cy + (p[1]-cy) * SHRINK
+      ]);
+    }
+  });
+}
+
+// ============================================================
+// なめらか線描画（Catmull-Rom スプライン）
+// ============================================================
+function drawSmoothLine(ctx, pts, color, lw, withDot) {
+  if(!pts || pts.length < 2) return;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lw;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  if(pts.length === 2) {
+    ctx.lineTo(pts[1].x, pts[1].y);
+  } else {
+    // Catmull-Rom → Bezier 変換
+    for(let i=0; i<pts.length-1; i++) {
+      const p0 = pts[Math.max(0,i-1)];
+      const p1 = pts[i];
+      const p2 = pts[i+1];
+      const p3 = pts[Math.min(pts.length-1,i+2)];
+      const cp1x = p1.x + (p2.x-p0.x)/6;
+      const cp1y = p1.y + (p2.y-p0.y)/6;
+      const cp2x = p2.x - (p3.x-p1.x)/6;
+      const cp2y = p2.y - (p3.y-p1.y)/6;
+      ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,p2.x,p2.y);
+    }
+  }
+  ctx.stroke();
+  if(withDot) {
+    // 書き始めに丸を打つ
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(pts[0].x, pts[0].y, lw*0.6, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ============================================================
+// アニメーション（medians を1画ずつ順番にCanvasに描画）
+// ============================================================
+function clearCanvas(id) {
+  const cv = document.getElementById(id);
+  cv.getContext('2d').clearRect(0,0,cvSize,cvSize);
+}
+
+function startAnim() {
+  if(animRaf){ cancelAnimationFrame(animRaf); animRaf=null; }
+  if(!charData) return;
+  clearCanvas('cv-anim');
+
+  const strokes = groupStrokes(charData);
+  const total = strokes.length;
+  const cv = document.getElementById('cv-anim');
+  const ctx = cv.getContext('2d');
+  const sc = cvSize / VBOX;
+  const lw = cvSize * 0.055;
+  const info = document.getElementById('stroke-label');
+
+  // 完了済み画のスケール済み座標リスト
+  const doneStrokes = [];
+
+  // 現在の状態
+  let sIdx = 0;       // 現在の画インデックス
+  let segIdx = 0;     // median内のセグメントインデックス（ptIdx → ptIdx+1）
+  let t = 0;          // セグメント内の進行 0.0 〜 1.0
+
+  // 画ごとの全点列（スケール済み）
+  let curPts = null;
+
+  function loadStroke(i) {
+    const grp = strokes[i];
+    if(!grp || !grp.median || grp.median.length < 2) return null;
+    return grp.median.map(p => ({x: p[0]*sc, y: p[1]*sc}));
+  }
+
+  function drawDone() {
+    doneStrokes.forEach(pts => drawSmoothLine(ctx, pts, '#b03060', lw, false));
+  }
+
+  // 1フレームあたりの進行量
+  // medianの点間距離の合計でスピードを調整し、全画で一定の速さに
+  function calcSpeed(pts) {
+    let totalDist = 0;
+    for(let i=0;i<pts.length-1;i++){
+      const dx=pts[i+1].x-pts[i].x, dy=pts[i+1].y-pts[i].y;
+      totalDist += Math.sqrt(dx*dx+dy*dy);
+    }
+    // 目標：1画 約20フレーム（60fps想定で約0.33秒）をベースに、speedMultiplierで調整
+    const targetFrames = Math.max(8, (totalDist / (cvSize * 0.07)) / speedMultiplier);
+    return 1.0 / targetFrames;
+  }
+
+  let speed = 0.05;
+
+  // 最初の画を準備
+  curPts = loadStroke(0);
+  if(curPts) speed = calcSpeed(curPts);
+  info.textContent = `1 / ${total} かく`;
+
+  // 画と画の間の一時停止（フレーム数）
+  let pauseFrames = 0;
+
+  function tick() {
+    if(!charData) { animRaf=null; return; }
+
+    // 一時停止中
+    if(pauseFrames > 0) {
+      pauseFrames--;
+      animRaf = requestAnimationFrame(tick);
+      return;
+    }
+
+    ctx.clearRect(0, 0, cvSize, cvSize);
+    drawDone();
+
+    // 全画完了
+    if(sIdx >= total) {
+      info.textContent = `ぜんぶで ${total} かく`;
+      return;
+    }
+
+    if(!curPts) {
+      // この画にmedianなし → スキップ
+      doneStrokes.push([]);
+      sIdx++; segIdx=0; t=0;
+      curPts = loadStroke(sIdx);
+      if(curPts) speed = calcSpeed(curPts);
+      animRaf = requestAnimationFrame(tick);
+      return;
+    }
+
+    // ---- 現在の画を描画 ----
+    // t は segIdx → segIdx+1 の間の進行度
+
+    // 書き終わった部分（0 〜 segIdx+1 まで）
+    const drawnPts = curPts.slice(0, segIdx + 1);
+
+    // 現在補間中の点
+    const from = curPts[segIdx];
+    const to   = curPts[Math.min(segIdx+1, curPts.length-1)];
+    const ex = from.x + (to.x - from.x) * Math.min(t, 1);
+    const ey = from.y + (to.y - from.y) * Math.min(t, 1);
+    const animPts = [...drawnPts, {x:ex, y:ey}];
+
+    drawSmoothLine(ctx, animPts, '#ff6b9d', lw, true);
+
+    // 画番号を右上
+    ctx.save();
+    ctx.font = `bold ${cvSize*0.09}px sans-serif`;
+    ctx.fillStyle = 'rgba(255,107,157,0.75)';
+    ctx.textAlign = 'right';
+    ctx.fillText(String(sIdx+1), cvSize-4, cvSize*0.11);
+    ctx.restore();
+
+    // 進行
+    t += speed;
+    if(t >= 1.0) {
+      t = 0;
+      segIdx++;
+      if(segIdx >= curPts.length - 1) {
+        // この画完了 → doneに移してポーズ
+        doneStrokes.push(curPts);
+        sIdx++;
+        segIdx = 0;
+        if(sIdx >= total) {
+          // 全完了：最終描画
+          ctx.clearRect(0, 0, cvSize, cvSize);
+          drawDone();
+          info.textContent = `ぜんぶで ${total} かく`;
+          return;
+        }
+        curPts = loadStroke(sIdx);
+        if(curPts) speed = calcSpeed(curPts);
+        info.textContent = `${sIdx+1} / ${total} かく`;
+        pauseFrames = Math.max(2, Math.round(10 / speedMultiplier));  // 次の画の前の一呼吸
+      }
+    }
+
+    animRaf = requestAnimationFrame(tick);
+  }
+
+  animRaf = requestAnimationFrame(tick);
+}
+
+function replayAnim() {
+  if(charData) startAnim();
+}
+
+// ============================================================
+// アニメ速度切り替え
+// ============================================================
+function setSpeed(level) {
+  const map = { slow: 0.55, normal: 1.0, fast: 1.8 };
+  speedMultiplier = map[level] ?? 1.0;
+
+  ['slow','normal','fast'].forEach(k => {
+    document.getElementById('spd-'+k).classList.toggle('sel', k === level);
+  });
+
+  // 現在アニメ中ならその場で再生し直す
+  if(charData && mode === 'anim') startAnim();
+}
+
+// ============================================================
+// 書き順番号の表示切り替え（なぞりモード用）
+// ============================================================
+function toggleStrokeNum() {
+  showStrokeNum = !showStrokeNum;
+  const btn = document.getElementById('btn-numtoggle');
+  btn.classList.toggle('sel', showStrokeNum);
+  btn.textContent = showStrokeNum ? '🔢 書き順をひょうじ' : '🔢 書き順をかくす';
+  if(charData) redrawGuide();
+}
+
+// ============================================================
+// なぞり書き
+// ============================================================
+function setupTrace() {
+  if(!charData) return;
+  redrawGuide(); // ガイドを再描画
+  const cv = document.getElementById('cv-trace');
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,cvSize,cvSize);
+  ctx.strokeStyle = '#ff6b9d';
+  ctx.lineWidth = Math.max(8, cvSize*0.035);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  traceDrawing = false;
+  traceMarked = false;
+  document.getElementById('score-msg').textContent = '';
+
+  cv.onpointerdown = e => {
+    e.preventDefault();
+    cv.setPointerCapture(e.pointerId);
+    traceDrawing = true; traceMarked = true;
+    const p = gPos(e,cv);
+    ctx.beginPath(); ctx.moveTo(p.x,p.y);
+  };
+  cv.onpointermove = e => {
+    if(!traceDrawing) return;
+    e.preventDefault();
+    const p = gPos(e,cv);
+    ctx.lineTo(p.x,p.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p.x,p.y);
+  };
+  cv.onpointerup = cv.onpointercancel = () => { traceDrawing=false; };
+}
+
+function gPos(e,cv) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x:(e.clientX-r.left)*(cv.width/r.width),
+    y:(e.clientY-r.top)*(cv.height/r.height)
+  };
+}
+
+function clearTrace() {
+  clearCanvas('cv-trace');
+  traceMarked = false;
+  document.getElementById('score-msg').textContent = '';
+}
+
+function checkTrace() {
+  if(!traceMarked){
+    document.getElementById('score-msg').textContent = 'ゆびでなぞってみてね！';
+    return;
+  }
+  document.getElementById('score-msg').textContent = '✨ よくできました！';
+}
+</script>
+</body>
+</html>
