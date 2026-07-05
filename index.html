@@ -1,334 +1,221 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>✨ 楽しい学習アプリ集</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; }
-    
-    body {
-      font-family: 'Segoe UI', 'Helvetica Neue', 'Hiragino Sans', 'Arial', sans-serif;
-      background: linear-gradient(135deg, #ffeef8 0%, #fff9e6 25%, #e0f7ff 50%, #f0e6ff 75%, #ffe6f0 100%);
-      min-height: 100vh;
-      padding: 30px 20px;
-      color: #333;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>がくしゅうシールブック</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Zen+Maru+Gothic:wght@500;700&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6EFDD;
+    --paper-fleck:#e9dfc4;
+    --ink:#3B2F22;
+    --ink-soft:#6b5c47;
+    --stamp-red:#c8493a;
+    --c-flip:#F2A65A;
+    --c-kana:#5FA8D3;
+    --c-tan:#E2543D;
+    --c-dot:#7FB069;
+    --tape:#f4dfa0;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  html,body{margin:0;padding:0;min-height:100%;}
+  body{
+    font-family:'Zen Maru Gothic', sans-serif;
+    color:var(--ink);
+    background-color:var(--paper);
+    background-image:
+      radial-gradient(var(--paper-fleck) 1px, transparent 1.4px),
+      radial-gradient(var(--paper-fleck) 1px, transparent 1.4px);
+    background-size:34px 34px, 34px 34px;
+    background-position:0 0, 17px 17px;
+    min-height:100vh;
+    padding:40px 20px 60px;
+  }
 
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-    }
+  .sheet{
+    max-width:1000px;
+    margin:0 auto;
+    position:relative;
+  }
 
-    header {
-      text-align: center;
-      margin-bottom: 50px;
-      animation: slideDown 0.6s ease-out;
-    }
+  .cover{
+    text-align:center;
+    margin-bottom:56px;
+    position:relative;
+  }
+  .cover-sticker{
+    position:relative;
+    display:inline-block;
+    padding:34px 52px 26px;
+    background:#fffdf7;
+    border-radius:44% 56% 51% 49%/53% 47% 53% 47%;
+    box-shadow:
+      0 0 0 5px #fffdf7,
+      0 0 0 6px rgba(59,47,34,.12),
+      0 10px 24px rgba(59,47,34,.18);
+    transform:rotate(-1.2deg);
+  }
+  .cover h1{
+    font-family:'Kosugi Maru', sans-serif;
+    font-size:clamp(28px,4.6vw,42px);
+    margin:0 0 6px;
+    letter-spacing:2px;
+    position:relative;
+    display:inline-block;
+    line-height:1.3;
+  }
+  .cover h1 .dot{ color:var(--stamp-red); }
+  .cover p{
+    margin:20px 0 0;
+    font-size:14px;
+    color:var(--ink-soft);
+    letter-spacing:1px;
+  }
+  .cover .sub-stamp{
+    display:inline-block;
+    margin-top:14px;
+    font-family:'Special Elite', monospace;
+    font-size:11px;
+    letter-spacing:3px;
+    color:var(--ink-soft);
+    border:1.5px dashed #b9ab8a;
+    padding:4px 14px;
+    border-radius:20px;
+    transform:rotate(-1deg);
+  }
 
-    .header-title {
-      font-size: 48px;
-      font-weight: 800;
-      margin-bottom: 10px;
-      background: linear-gradient(120deg, #ff6b9d 0%, #c44569 25%, #f8b500 50%, #30b0c0 75%, #aa96ff 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      letter-spacing: -1px;
-    }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+    gap:34px 26px;
+    padding:0 6px 20px;
+  }
 
-    .header-subtitle {
-      font-size: 18px;
-      color: #666;
-      margin-bottom: 8px;
-      font-weight: 500;
-    }
+  .sticker{
+    position:relative;
+    text-decoration:none;
+    color:var(--ink);
+    display:block;
+    padding:26px 18px 22px;
+    background:#fffdf7;
+    border-radius:255px 15px 225px 15px/15px 225px 15px 255px;
+    box-shadow:
+      0 0 0 5px #fffdf7,
+      0 0 0 6px rgba(59,47,34,.12),
+      3px 10px 18px rgba(59,47,34,.18);
+    transition:transform .25s ease, box-shadow .25s ease;
+  }
+  .sticker:nth-child(1){ transform:rotate(-3deg); }
+  .sticker:nth-child(2){ transform:rotate(2.2deg); }
+  .sticker:nth-child(3){ transform:rotate(-2deg); }
+  .sticker:nth-child(4){ transform:rotate(3deg); }
+  .sticker:hover{
+    transform:rotate(0deg) translateY(-6px) scale(1.03);
+    box-shadow:
+      0 0 0 5px #fffdf7,
+      0 0 0 6px rgba(59,47,34,.14),
+      4px 16px 26px rgba(59,47,34,.26);
+  }
+  .sticker:focus-visible{ outline:3px solid var(--stamp-red); outline-offset:4px; }
 
-    .header-description {
-      font-size: 14px;
-      color: #999;
-      line-height: 1.6;
-    }
+  .badge{
+    width:78px;height:78px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:36px;
+    margin:0 auto 14px;
+    border:3px solid #fffdf7;
+    box-shadow:0 3px 8px rgba(0,0,0,.15) inset, 0 3px 6px rgba(0,0,0,.12);
+  }
+  .sticker:nth-child(1) .badge{ background:var(--c-flip); }
+  .sticker:nth-child(2) .badge{ background:var(--c-kana); }
+  .sticker:nth-child(3) .badge{ background:var(--c-tan); }
+  .sticker:nth-child(4) .badge{ background:var(--c-dot); }
 
-    .apps-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 24px;
-      margin-bottom: 40px;
-    }
+  .sticker h2{
+    font-family:'Kosugi Maru', sans-serif;
+    font-size:18px;
+    margin:0 0 8px;
+    text-align:center;
+  }
+  .sticker p{
+    font-size:12.5px;
+    line-height:1.7;
+    color:var(--ink-soft);
+    margin:0 0 14px;
+    text-align:center;
+    min-height:56px;
+  }
+  .play{
+    display:block;
+    margin:0 auto;
+    width:fit-content;
+    font-family:'Special Elite', monospace;
+    font-size:12px;
+    letter-spacing:3px;
+    color:var(--stamp-red);
+    border:2px solid var(--stamp-red);
+    padding:5px 16px;
+    border-radius:4px;
+    transform:rotate(-2deg);
+    position:relative;
+  }
+  .play::before{ content:"▶ "; }
 
-    .app-card {
-      background: white;
-      border-radius: 16px;
-      padding: 0;
-      overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      cursor: pointer;
-      text-decoration: none;
-      color: inherit;
-      display: flex;
-      flex-direction: column;
-      animation: popIn 0.5s ease-out both;
-    }
+  @media (max-width:520px){
+    body{padding:26px 14px 40px;}
+    .sticker{ transform:none !important; }
+  }
 
-    .app-card:nth-child(1) { animation-delay: 0.1s; }
-    .app-card:nth-child(2) { animation-delay: 0.2s; }
-    .app-card:nth-child(3) { animation-delay: 0.3s; }
-    .app-card:nth-child(4) { animation-delay: 0.4s; }
-
-    .app-card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
-    }
-
-    .app-card:active {
-      transform: translateY(-4px);
-    }
-
-    .card-header {
-      height: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 64px;
-      font-weight: 700;
-      background: linear-gradient(135deg, var(--color-1) 0%, var(--color-2) 100%);
-    }
-
-    .app-card:nth-child(1) .card-header {
-      --color-1: #ffd6e8;
-      --color-2: #ffb3d9;
-    }
-
-    .app-card:nth-child(2) .card-header {
-      --color-1: #fff5b3;
-      --color-2: #ffe680;
-    }
-
-    .app-card:nth-child(3) .card-header {
-      --color-1: #b3e5ff;
-      --color-2: #80d5ff;
-    }
-
-    .app-card:nth-child(4) .card-header {
-      --color-1: #e8d6ff;
-      --color-2: #d6b3ff;
-    }
-
-    .card-body {
-      padding: 20px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .card-title {
-      font-size: 20px;
-      font-weight: 700;
-      margin-bottom: 8px;
-      color: #333;
-    }
-
-    .card-description {
-      font-size: 13px;
-      color: #666;
-      line-height: 1.6;
-      margin-bottom: 16px;
-      flex: 1;
-    }
-
-    .card-link {
-      display: inline-block;
-      background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
-      color: white;
-      padding: 10px 20px;
-      border-radius: 24px;
-      font-weight: 600;
-      font-size: 13px;
-      text-decoration: none;
-      transition: all 0.3s;
-      text-align: center;
-      border: none;
-      cursor: pointer;
-    }
-
-    .card-link:hover {
-      transform: scale(1.05);
-      box-shadow: 0 8px 20px rgba(255, 107, 157, 0.3);
-    }
-
-    .card-link:active {
-      transform: scale(0.98);
-    }
-
-    footer {
-      text-align: center;
-      margin-top: 60px;
-      padding-top: 30px;
-      border-top: 2px solid rgba(255, 107, 157, 0.2);
-      font-size: 13px;
-      color: #999;
-      animation: slideUp 0.6s ease-out 0.5s both;
-    }
-
-    footer a {
-      color: #ff6b9d;
-      text-decoration: none;
-      font-weight: 600;
-      transition: color 0.3s;
-    }
-
-    footer a:hover {
-      color: #c44569;
-    }
-
-    @keyframes slideDown {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes slideUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes popIn {
-      from {
-        opacity: 0;
-        transform: scale(0.9);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1);
-      }
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .header-title {
-        font-size: 36px;
-      }
-
-      .header-subtitle {
-        font-size: 16px;
-      }
-
-      .apps-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
-      }
-
-      body {
-        padding: 20px 16px;
-      }
-
-      header {
-        margin-bottom: 30px;
-      }
-    }
-
-    /* Dark mode support */
-    @media (prefers-color-scheme: dark) {
-      body {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 25%, #0f3460 50%, #533483 75%, #2a1a4e 100%);
-      }
-
-      .app-card {
-        background: #2a2a4a;
-        color: #f0f0f0;
-      }
-
-      .card-title {
-        color: #f0f0f0;
-      }
-
-      .card-description {
-        color: #aaa;
-      }
-
-      footer {
-        border-top-color: rgba(255, 107, 157, 0.3);
-        color: #888;
-      }
-    }
-  </style>
+  @media (prefers-reduced-motion:reduce){
+    .sticker{ transition:none; }
+  }
+</style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <div class="header-title">✨ 楽しい学習アプリ集</div>
-      <div class="header-subtitle">新しいことを学ぼう</div>
-      <div class="header-description">遊びながら学べるアプリがいっぱい。好きなアプリを選んでクリック！</div>
-    </header>
+  <div class="sheet">
 
-    <div class="apps-grid">
-      <!-- パラパラ漫画 -->
-      <a href="./flipbook/flipbook.html" class="app-card">
-        <div class="card-header">🎬</div>
-        <div class="card-body">
-          <div class="card-title">パラパラ漫画メーカー</div>
-          <div class="card-description">
-            フレームごとに絵を描いて、アニメーションを作ろう。素材を使って効率的に制作できます。
-          </div>
-          <a href="./flipbook/flipbook.html" class="card-link">始める →</a>
-        </div>
-      </a>
-
-      <!-- かな文字トレーサー -->
-      <a href="./kana/kana-writing.html" class="app-card">
-        <div class="card-header">✍️</div>
-        <div class="card-body">
-          <div class="card-title">かな文字トレーサー</div>
-          <div class="card-description">
-            ひらがな・カタカナを正しい筆順で丁寧に書く練習ができます。毎日続けて上達しよう！
-          </div>
-          <a href="./kana/kana-writing.html" class="card-link">始める →</a>
-        </div>
-      </a>
-
-      <!-- タングラムパズル -->
-      <a href="./tangram/tangram-puzzle.html" class="app-card">
-        <div class="card-header">🧩</div>
-        <div class="card-body">
-          <div class="card-title">タングラムパズル</div>
-          <div class="card-description">
-            7つのピースを組み合わせていろいろな形を作ります。頭の柔軟性を鍛えよう！
-          </div>
-          <a href="./tangram/tangram-puzzle.html" class="card-link">始める →</a>
-        </div>
-      </a>
-
-      <!-- ドット絵エディタ -->
-      <a href="./dot-art/dot-art-maker.html" class="app-card">
-        <div class="card-header">🎨</div>
-        <div class="card-body">
-          <div class="card-title">ドット絵エディタ</div>
-          <div class="card-description">
-            マスを塗ってドット絵を作ります。自分だけのキャラクターやデザインを作ってみよう！
-          </div>
-          <a href="./dot-art/dot-art-maker.html" class="card-link">始める →</a>
-        </div>
-      </a>
+    <div class="cover">
+      <div class="cover-sticker">
+        <h1>がくしゅう<span class="dot">シール</span>ブック</h1>
+        <div class="sub-stamp">TAP TO PLAY</div>
+      </div>
+      <p>すきなアプリをえらんでね</p>
     </div>
 
-    <footer>
-      <p>🌈 楽しく学ぼう！ | すべてのアプリは無料です</p>
-      <p style="margin-top: 12px; font-size: 12px;">Made with ❤️ for learning</p>
-    </footer>
+    <div class="grid">
+      <a class="sticker" href="./flipbook/flipbook.html">
+        <div class="badge">🎬</div>
+        <h2>パラパラ漫画メーカー</h2>
+        <p>コマを描いて<br>じぶんだけのアニメを作ろう</p>
+        <span class="play">START</span>
+      </a>
+
+      <a class="sticker" href="./kana/kana-writing.html">
+        <div class="badge">✍️</div>
+        <h2>かな文字トレーサー</h2>
+        <p>ひらがな・カタカナを<br>ただしいじゅんで書く練習</p>
+        <span class="play">START</span>
+      </a>
+
+      <a class="sticker" href="./tangram/tangram-puzzle.html">
+        <div class="badge">🧩</div>
+        <h2>タングラムパズル</h2>
+        <p>7つのピースで<br>いろいろな形を作ろう</p>
+        <span class="play">START</span>
+      </a>
+
+      <a class="sticker" href="./dot-art/dot-art-maker.html">
+        <div class="badge">🎨</div>
+        <h2>ドット絵エディタ</h2>
+        <p>マスを塗って<br>自分だけの絵を作ろう</p>
+        <span class="play">START</span>
+      </a>
+  
+
   </div>
 </body>
 </html>
