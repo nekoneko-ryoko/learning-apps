@@ -58,7 +58,7 @@ function App() {
   const [fps, setFps] = useState(8);
   const [playing, setPlaying] = useState(false);
   const [onion, setOnion] = useState(true);
-  const [gifOk, setGifOk] = useState(false);
+  
   const [status, setStatus] = useState("準備完了");
   const [thumbs, setThumbs] = useState({});
   const [materials, setMaterials] = useState([]);
@@ -510,16 +510,7 @@ function App() {
     rerender(); mkThumb(frame);
   };
 
-  const expGif = () => {
-    if (!gifOk || !window.GIF) { setStatus("gif.js 読込中..."); return; }
-    setStatus("GIF 生成中...");
-    const gif = new window.GIF({ workers:2, quality:10, width:CW, height:CH, workerScript:'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js' });
-    const tc=document.createElement('canvas'); tc.width=CW; tc.height=CH; const tctx=tc.getContext('2d');
-    frames.forEach(f => { comp(f,tctx,false,null); gif.addFrame(tc,{delay:Math.round(1000/fps),copy:true}); });
-    gif.on('finished', blob => { const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='animation.gif'; a.click(); setStatus("✓ GIF 完了"); });
-    gif.on('error', () => setStatus("✗ GIF エラー"));
-    gif.render();
-  };
+  
 
   const expVid = async () => {
     setStatus("動画生成中...");
@@ -589,7 +580,6 @@ function App() {
         <input type="number" min={1} max={30} value={fps} onChange={e => setFps(+e.target.value)}
           style={{ width:36, background:'white', border:'1px solid #ddd', color:'#333', borderRadius:4, padding:'2px 4px', fontSize:11 }} />
         <Sep />
-        <Btn onClick={expGif} disabled={!gifOk}>🖼 GIF</Btn>
         <Btn onClick={expVid}>🎞 動画</Btn>
         <div style={{ flex:1 }} />
         {tool === 'select' && selRect && selRect.w > 4 && (
