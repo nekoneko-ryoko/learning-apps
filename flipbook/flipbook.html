@@ -284,8 +284,14 @@ function App() {
   const gpos = e => {
     const c = cvs.current; if (!c) return { x: 0, y: 0 };
     const r = c.getBoundingClientRect();
-    const cx = e.touches ? e.touches[0].clientX : e.clientX;
-    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    let cx, cy;
+    if (e.touches && e.touches.length > 0) {
+      cx = e.touches[0].clientX; cy = e.touches[0].clientY;
+    } else if (e.changedTouches && e.changedTouches.length > 0) {
+      cx = e.changedTouches[0].clientX; cy = e.changedTouches[0].clientY;
+    } else {
+      cx = e.clientX; cy = e.clientY;
+    }
     return {
       x: Math.max(0, Math.min(CW-1, Math.floor((cx - r.left) * CW / r.width))),
       y: Math.max(0, Math.min(CH-1, Math.floor((cy - r.top) * CH / r.height)))
