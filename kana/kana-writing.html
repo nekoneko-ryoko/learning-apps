@@ -358,6 +358,28 @@ const ROWS = {
 const CDN = 'https://cdn.jsdelivr.net/npm/kana-svg-data/dist';
 const VBOX = 1024; // SVGのviewBox幅
 
+// データ元(kana-svg-data)の書き順が実際の標準と異なる文字を、id順で上書き修正する
+// 例：「も」は本来「縦（反り）→横→横」だが、データでは「横→横→縦」になっているため補正
+const STROKE_ORDER_OVERRIDES = {
+  'も': ['3', '1', '2'],
+};
+
+function applyStrokeOrderOverride(ch, data) {
+  const order = STROKE_ORDER_OVERRIDES[ch];
+  if(!order || !data) return data;
+  const reorder = (arr) => {
+    if(!arr) return arr;
+    const map = new Map(arr.map(item => [item.id, item]));
+    const result = [];
+    order.forEach(id => { if(map.has(id)) { result.push(map.get(id)); map.delete(id); } });
+    map.forEach(v => result.push(v)); // 対象外（濁点など）はそのまま末尾に
+    return result;
+  };
+  data.strokes = reorder(data.strokes);
+  data.medians = reorder(data.medians);
+  return data;
+}
+
 // ============================================================
 // 状態
 // ============================================================
@@ -563,6 +585,7 @@ async function loadChar(ch, seqI, opts) {
     const res = await fetch(url);
     if(!res.ok) throw new Error('HTTP '+res.status);
     charData = await res.json();
+    charData = applyStrokeOrderOverride(ch, charData);
     showLoading(false);
     setMode(mode, skipAutoplay);
   } catch(e) {
