@@ -676,15 +676,7 @@
                 tick.className = "absolute top-0 bottom-0 border-r border-sky-200 flex flex-col justify-end pb-0.5 text-[7px] text-sky-400 font-bold font-mono text-center transition-colors duration-150";
                 tick.style.width = `${cellW}px`;
                 tick.style.left = `${x * cellW}px`;
-                
-                const shouldShowLabel = (gridW <= 16) || (gridW <= 32 && x % 2 === 0) || (gridW <= 64 && x % 4 === 0) || (x % 8 === 0);
-                if (shouldShowLabel) {
-                    tick.textContent = x;
-                } else {
-                    const notch = document.createElement("div");
-                    notch.className = "w-[1px] h-0.5 bg-slate-750 mx-auto";
-                    tick.appendChild(notch);
-                }
+                tick.textContent = x + 1;
                 rulerX.appendChild(tick);
             }
 
@@ -693,21 +685,13 @@
                 tick.className = "absolute left-0 right-0 border-b border-sky-200 flex items-center justify-end pr-0.5 text-[7px] text-sky-400 font-bold font-mono transition-colors duration-150";
                 tick.style.height = `${cellH}px`;
                 tick.style.top = `${y * cellH}px`;
-
-                const shouldShowLabel = (gridH <= 16) || (gridH <= 32 && y % 2 === 0) || (gridH <= 64 && y % 4 === 0) || (y % 8 === 0);
-                if (shouldShowLabel) {
-                    tick.textContent = y;
-                } else {
-                    const notch = document.createElement("div");
-                    notch.className = "h-[1px] w-0.5 bg-slate-750 ml-auto";
-                    tick.appendChild(notch);
-                }
+                tick.textContent = y + 1;
                 rulerY.appendChild(tick);
             }
         }
 
         function updateCoords(x, y) {
-            coordDisplay.innerHTML = `<i data-lucide="mouse-pointer-click" class="w-2.5 h-2.5 text-black"></i><span>X: ${x}, Y: ${y}</span>`;
+            coordDisplay.innerHTML = `<i data-lucide="mouse-pointer-click" class="w-2.5 h-2.5 text-black"></i><span>X: ${x + 1}, Y: ${y + 1}</span>`;
             lucide.createIcons({ attrs: { class: 'w-2.5 h-2.5 text-black' } });
             highlightRuler(x, y);
         }
