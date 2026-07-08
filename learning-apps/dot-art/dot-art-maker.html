@@ -51,10 +51,10 @@
             width: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-            background: #e0f2fe;
+            background: #f0f0f0;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #7dd3fc;
+            background: #b0b0b0;
             border-radius: 2px;
         }
     </style>
@@ -67,7 +67,7 @@
             <div class="bg-gradient-to-tr from-pink-500 to-orange-400 text-white p-1 rounded-md shadow-lg shadow-indigo-500/10">
                 <i data-lucide="palette" class="w-3.5 h-3.5"></i>
             </div>
-            <h1 class="text-xs font-black tracking-wider text-pink-600">PIXEL PRO</h1>
+            <h1 class="text-xs font-black tracking-wider text-black">PIXEL PRO</h1>
         </div>
         
         <!-- 操作アクション -->
@@ -81,25 +81,25 @@
             
             <div class="h-4 w-[1px] bg-sky-200 mx-0.5"></div>
             
-            <button id="btn-clear" class="bg-white hover:bg-rose-100 hover:text-rose-500 hover:border-rose-300 text-rose-400 p-1.5 rounded transition border border-rose-200" title="すべてクリア">
+            <button id="btn-clear" class="bg-white hover:bg-neutral-100 hover:text-black hover:border-neutral-300 text-neutral-500 p-1.5 rounded transition border border-neutral-200" title="すべてクリア">
                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
             </button>
             
             <div class="h-4 w-[1px] bg-sky-200 mx-0.5"></div>
 
             <!-- 画像読み込み (自動ドット絵化用) -->
-            <label for="input-image-load" class="bg-white hover:bg-purple-100 text-purple-500 hover:text-purple-600 border border-purple-300 p-1.5 rounded transition cursor-pointer flex items-center justify-center" title="画像を読み込み / 写真をドット絵化">
+            <label for="input-image-load" class="bg-white hover:bg-neutral-100 text-black hover:text-black border border-neutral-300 p-1.5 rounded transition cursor-pointer flex items-center justify-center" title="画像を読み込み / 写真をドット絵化">
                 <i data-lucide="image-plus" class="w-3.5 h-3.5"></i>
                 <input type="file" id="input-image-load" accept="image/*" class="hidden">
             </label>
 
             <!-- ドット絵PNG保存 -->
-            <button id="btn-save-pixel" class="bg-white hover:bg-green-100 text-green-600 border border-green-300 p-1.5 rounded transition flex items-center justify-center" title="ドット絵PNG保存 (等倍1px/再開可能)">
+            <button id="btn-save-pixel" class="bg-white hover:bg-neutral-100 text-black border border-neutral-300 p-1.5 rounded transition flex items-center justify-center" title="ドット絵PNG保存 (等倍1px/再開可能)">
                 <i data-lucide="save" class="w-3.5 h-3.5"></i>
             </button>
 
             <!-- 高画質PNG書き出し -->
-            <button id="btn-export-hd" class="bg-pink-500 hover:bg-pink-400 text-white p-1.5 rounded transition shadow-md flex items-center justify-center" title="高画質PNGエクスポート">
+            <button id="btn-export-hd" class="bg-black hover:bg-neutral-700 text-white p-1.5 rounded transition shadow-md flex items-center justify-center" title="高画質PNGエクスポート">
                 <i data-lucide="download" class="w-3.5 h-3.5"></i>
             </button>
         </div>
@@ -158,7 +158,7 @@
             <div class="bg-sky-50 p-1.5 md:p-2 rounded-lg border border-sky-200 flex md:flex-col gap-1.5 items-center md:items-stretch shrink-0">
                 <div class="flex justify-between items-center gap-2 md:mb-0.5 w-full">
                     <label class="text-[8px] md:text-[9px] font-bold text-sky-500 tracking-wider uppercase block">Size</label>
-                    <button id="btn-trigger-resize" class="text-pink-500 hover:text-pink-600 flex items-center gap-0.5 text-[8px] font-bold uppercase bg-pink-50 border border-pink-200 px-1.5 py-0.5 rounded" title="詳細なリサイズダイアログ">
+                    <button id="btn-trigger-resize" class="text-black hover:text-black flex items-center gap-0.5 text-[8px] font-bold uppercase bg-neutral-50 border border-neutral-200 px-1.5 py-0.5 rounded" title="詳細なリサイズダイアログ">
                         <i data-lucide="maximize-2" class="w-2.5 h-2.5"></i>
                         <span class="hidden md:inline">Resize</span>
                     </button>
@@ -182,15 +182,15 @@
                 <div class="flex justify-between items-center gap-2 md:mb-0.5 w-full">
                     <label class="text-[8px] md:text-[9px] font-bold text-sky-500 tracking-wider uppercase block">Trace (下絵)</label>
                     <!-- 下絵クリアボタン -->
-                    <button id="btn-clear-trace" class="text-rose-400 hover:text-rose-300 hidden" title="下絵を削除">
+                    <button id="btn-clear-trace" class="text-neutral-500 hover:text-neutral-400 hidden" title="下絵を削除">
                         <i data-lucide="image-off" class="w-3.5 h-3.5"></i>
                     </button>
                 </div>
                 
                 <div class="flex items-center gap-1 w-full">
                     <!-- 下絵読み込みインプット -->
-                    <label for="input-trace-load" class="bg-white border border-purple-300 text-[10px] text-purple-600 px-2 py-1 rounded cursor-pointer hover:bg-purple-50 transition flex items-center gap-1 shrink-0" title="下絵用の画像を読み込みます">
-                        <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-pink-500"></i>
+                    <label for="input-trace-load" class="bg-white border border-neutral-300 text-[10px] text-black px-2 py-1 rounded cursor-pointer hover:bg-neutral-50 transition flex items-center gap-1 shrink-0" title="下絵用の画像を読み込みます">
+                        <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-black"></i>
                         <span>下絵読込</span>
                         <input type="file" id="input-trace-load" accept="image/*" class="hidden">
                     </label>
@@ -209,7 +209,7 @@
             <div class="bg-sky-50 p-1.5 md:p-2 rounded-lg border border-sky-200 flex md:flex-col gap-1.5 items-center md:items-stretch shrink-0">
                 <label class="text-[8px] md:text-[9px] font-bold text-sky-500 tracking-wider uppercase hidden md:block">Tools</label>
                 <div class="flex md:grid md:grid-cols-4 gap-1">
-                    <button id="tool-pencil" class="tool-btn bg-pink-100 border border-pink-400 text-pink-600 p-1.5 rounded flex items-center justify-center transition w-7 h-7 md:w-auto md:h-auto md:aspect-square" data-tool="pencil" title="ペン (P)">
+                    <button id="tool-pencil" class="tool-btn bg-neutral-100 border border-neutral-400 text-black p-1.5 rounded flex items-center justify-center transition w-7 h-7 md:w-auto md:h-auto md:aspect-square" data-tool="pencil" title="ペン (P)">
                         <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                     </button>
                     <button id="tool-eraser" class="tool-btn bg-white border border-sky-200 text-sky-500 hover:text-sky-700 p-1.5 rounded flex items-center justify-center transition w-7 h-7 md:w-auto md:h-auto md:aspect-square" data-tool="eraser" title="消しゴム (E)">
@@ -229,7 +229,7 @@
                 <label class="text-[8px] md:text-[9px] font-bold text-sky-500 tracking-wider uppercase hidden md:block">Shape</label>
                 <div class="flex md:grid md:grid-cols-5 gap-1">
                     <!-- 四角 -->
-                    <button id="shape-rect" class="shape-btn bg-pink-100 border border-pink-400 text-pink-600 p-1 rounded flex items-center justify-center transition w-7 h-7 md:w-auto md:h-auto md:aspect-square" data-shape="rect" title="四角（■）">
+                    <button id="shape-rect" class="shape-btn bg-neutral-100 border border-neutral-400 text-black p-1 rounded flex items-center justify-center transition w-7 h-7 md:w-auto md:h-auto md:aspect-square" data-shape="rect" title="四角（■）">
                         <svg viewBox="0 0 10 10" class="w-4 h-4"><rect x="0" y="0" width="10" height="10" fill="currentColor"/></svg>
                     </button>
                     <!-- 三角：左上 ◤ -->
@@ -283,7 +283,7 @@
                     <span class="text-[8px] font-bold text-sky-500 tracking-widest uppercase">Grid</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="toggle-grid" checked class="sr-only peer">
-                        <div class="w-7 h-4 bg-sky-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-pink-500 peer-checked:after:bg-white"></div>
+                        <div class="w-7 h-4 bg-sky-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-black peer-checked:after:bg-white"></div>
                     </label>
                 </div>
             </div>
@@ -297,7 +297,7 @@
         <div class="bg-white border border-sky-200 w-full max-w-[320px] p-4 rounded-xl shadow-2xl flex flex-col gap-3.5 transform scale-95 transition-all duration-200">
             <div class="flex justify-between items-center">
                 <h3 class="text-[10px] font-bold text-sky-600 tracking-wider uppercase flex items-center gap-1">
-                    <i data-lucide="maximize-2" class="w-3.5 h-3.5 text-pink-500"></i>
+                    <i data-lucide="maximize-2" class="w-3.5 h-3.5 text-black"></i>
                     Canvas Resizer
                 </h3>
                 <button id="btn-close-resize" class="text-sky-400 hover:text-sky-600">
@@ -328,13 +328,13 @@
                 <label class="text-[8px] font-bold text-sky-500 tracking-widest uppercase block mb-1">Resize Mode</label>
                 <div class="flex flex-col gap-1">
                     <label class="flex items-center gap-2 bg-sky-50 hover:bg-sky-100 p-2 rounded border border-sky-200 cursor-pointer transition">
-                        <input type="radio" name="resize-mode" value="crop-pad" checked class="text-pink-500 focus:ring-pink-400 border-sky-300 bg-white">
+                        <input type="radio" name="resize-mode" value="crop-pad" checked class="text-black focus:ring-pink-400 border-sky-300 bg-white">
                         <div class="text-left">
                             <div class="text-[10px] font-bold text-slate-600">余白を追加・トリミング</div>
                         </div>
                     </label>
                     <label class="flex items-center gap-2 bg-sky-50 hover:bg-sky-100 p-2 rounded border border-sky-200 cursor-pointer transition">
-                        <input type="radio" name="resize-mode" value="scale" class="text-pink-500 focus:ring-pink-400 border-sky-300 bg-white">
+                        <input type="radio" name="resize-mode" value="scale" class="text-black focus:ring-pink-400 border-sky-300 bg-white">
                         <div class="text-left">
                             <div class="text-[10px] font-bold text-slate-600">全体を引き伸ばして伸縮</div>
                         </div>
@@ -351,7 +351,7 @@
                         <button class="anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400" data-anchor="top-center"></button>
                         <button class="anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400" data-anchor="top-right"></button>
                         <button class="anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400" data-anchor="middle-left"></button>
-                        <button class="anchor-btn w-5 h-5 rounded border border-pink-400 bg-pink-100 text-pink-500 flex items-center justify-center text-[8px]" data-anchor="center"></button>
+                        <button class="anchor-btn w-5 h-5 rounded border border-neutral-400 bg-neutral-100 text-black flex items-center justify-center text-[8px]" data-anchor="center"></button>
                         <button class="anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400" data-anchor="middle-right"></button>
                         <button class="anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400" data-anchor="bottom-left"></button>
                         <button class="anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400" data-anchor="bottom-center"></button>
@@ -365,7 +365,7 @@
                 <button id="btn-cancel-resize" class="bg-sky-100 hover:bg-sky-200 text-sky-700 py-1.5 rounded text-[10px] font-bold border border-sky-300 transition">
                     キャンセル
                 </button>
-                <button id="btn-apply-resize" class="bg-pink-500 hover:bg-pink-400 text-white py-1.5 rounded text-[10px] font-bold shadow-lg transition">
+                <button id="btn-apply-resize" class="bg-black hover:bg-neutral-700 text-white py-1.5 rounded text-[10px] font-bold shadow-lg transition">
                     適用
                 </button>
             </div>
@@ -374,7 +374,7 @@
 
     <!-- 通知トースト -->
     <div id="toast" class="fixed bottom-5 right-5 bg-white text-slate-700 border border-sky-200 px-3 py-2.5 rounded-lg shadow-2xl flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 z-50 pointer-events-none">
-        <div class="bg-pink-100 text-pink-500 p-0.5 rounded" id="toast-icon-bg">
+        <div class="bg-neutral-100 text-black p-0.5 rounded" id="toast-icon-bg">
             <i data-lucide="info" class="w-3.5 h-3.5" id="toast-icon"></i>
         </div>
         <span id="toast-message" class="text-[10px] font-semibold text-slate-600">通知メッセージ</span>
@@ -405,6 +405,30 @@
         
         let recentColors = [];
         let gridData = []; // 縦方向 gridH x 横方向 gridW の2次元配列
+
+        // ブラウザ標準のconfirm()はGoogleサイト等のサンドボックス化されたiframe内で
+        // ブロックされ、常にfalseを返してしまうことがあるため、自前のダイアログを用意する
+        function customConfirm(message) {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+                const box = document.createElement('div');
+                box.style.cssText = 'background:#fff;border-radius:14px;padding:22px;max-width:300px;width:100%;text-align:center;font-family:inherit;box-shadow:0 12px 32px rgba(0,0,0,0.25);';
+                box.innerHTML =
+                    '<p style="margin:0 0 18px;font-size:14px;line-height:1.7;color:#1e293b;">' + message + '</p>' +
+                    '<div style="display:flex;gap:10px;justify-content:center;">' +
+                    '<button id="__cc_no" style="flex:1;padding:9px 0;border-radius:9px;border:1px solid #cbd5e1;background:#fff;color:#334155;cursor:pointer;font-size:13px;font-weight:bold;">キャンセル</button>' +
+                    '<button id="__cc_yes" style="flex:1;padding:9px 0;border-radius:9px;border:none;background:#ef4444;color:#fff;cursor:pointer;font-size:13px;font-weight:bold;">はい</button>' +
+                    '</div>';
+                overlay.appendChild(box);
+                document.body.appendChild(overlay);
+                const cleanup = (result) => { document.body.removeChild(overlay); resolve(result); };
+                box.querySelector('#__cc_yes').onclick = () => cleanup(true);
+                box.querySelector('#__cc_no').onclick = () => cleanup(false);
+                overlay.onclick = (e) => { if (e.target === overlay) cleanup(false); };
+            });
+        }
+
 
         // 履歴管理
         let history = [];
@@ -683,8 +707,8 @@
         }
 
         function updateCoords(x, y) {
-            coordDisplay.innerHTML = `<i data-lucide="mouse-pointer-click" class="w-2.5 h-2.5 text-pink-500"></i><span>X: ${x}, Y: ${y}</span>`;
-            lucide.createIcons({ attrs: { class: 'w-2.5 h-2.5 text-pink-500' } });
+            coordDisplay.innerHTML = `<i data-lucide="mouse-pointer-click" class="w-2.5 h-2.5 text-black"></i><span>X: ${x}, Y: ${y}</span>`;
+            lucide.createIcons({ attrs: { class: 'w-2.5 h-2.5 text-black' } });
             highlightRuler(x, y);
         }
 
@@ -940,8 +964,8 @@
             });
 
             // 全消去
-            btnClear.addEventListener("click", () => {
-                const confirmed = confirm("すべてのピクセルをクリアしますか？");
+            btnClear.addEventListener("click", async () => {
+                const confirmed = await customConfirm("すべてのピクセルをクリアしますか？");
                 if (confirmed) {
                     resetGridData();
                     buildCanvas();
@@ -1000,7 +1024,7 @@
                         b.className = "anchor-btn w-5 h-5 rounded border border-sky-200 hover:bg-sky-100 flex items-center justify-center text-[8px] text-sky-400";
                         b.innerHTML = "";
                     });
-                    btn.className = "anchor-btn w-5 h-5 rounded border border-pink-400 bg-pink-100 text-pink-500 flex items-center justify-center text-[8px]";
+                    btn.className = "anchor-btn w-5 h-5 rounded border border-neutral-400 bg-neutral-100 text-black flex items-center justify-center text-[8px]";
                     currentAnchor = btn.dataset.anchor;
                 });
             });
@@ -1035,10 +1059,10 @@
             currentTool = toolName;
             toolButtons.forEach(btn => {
                 if (btn.dataset.tool === toolName) {
-                    btn.classList.add("bg-pink-100", "border-pink-400", "text-pink-600");
+                    btn.classList.add("bg-neutral-100", "border-neutral-400", "text-black");
                     btn.classList.remove("bg-white", "border-sky-200", "text-sky-500", "hover:text-sky-700");
                 } else {
-                    btn.classList.remove("bg-pink-100", "border-pink-400", "text-pink-600");
+                    btn.classList.remove("bg-neutral-100", "border-neutral-400", "text-black");
                     btn.classList.add("bg-white", "border-sky-200", "text-sky-500", "hover:text-sky-700");
                 }
             });
@@ -1048,10 +1072,10 @@
             currentShape = shapeName;
             shapeButtons.forEach(btn => {
                 if (btn.dataset.shape === shapeName) {
-                    btn.classList.add("bg-pink-100", "border-pink-400", "text-pink-600");
+                    btn.classList.add("bg-neutral-100", "border-neutral-400", "text-black");
                     btn.classList.remove("bg-white", "border-sky-200", "text-sky-500", "hover:text-sky-700");
                 } else {
-                    btn.classList.remove("bg-pink-100", "border-pink-400", "text-pink-600");
+                    btn.classList.remove("bg-neutral-100", "border-neutral-400", "text-black");
                     btn.classList.add("bg-white", "border-sky-200", "text-sky-500", "hover:text-sky-700");
                 }
             });
@@ -1250,21 +1274,21 @@
             if (isTraceVisible) {
                 traceBg.style.opacity = traceOpacity / 100;
                 iconTraceEye.setAttribute("data-lucide", "eye");
-                btnToggleTrace.classList.remove("text-rose-400");
-                btnToggleTrace.classList.add("text-pink-500");
+                btnToggleTrace.classList.remove("text-neutral-500");
+                btnToggleTrace.classList.add("text-black");
             } else {
                 traceBg.style.opacity = 0;
                 iconTraceEye.setAttribute("data-lucide", "eye-off");
-                btnToggleTrace.classList.remove("text-pink-500");
-                btnToggleTrace.classList.add("text-rose-400");
+                btnToggleTrace.classList.remove("text-black");
+                btnToggleTrace.classList.add("text-neutral-500");
             }
             // Lucideアイコンの再描画
             lucide.createIcons({ attrs: { class: 'w-4 h-4' } });
         }
 
         // 下絵を削除する
-        function clearTraceImage() {
-            const confirmed = confirm("読み込んだ下絵をクリアしますか？（ドット絵データは消えません）");
+        async function clearTraceImage() {
+            const confirmed = await customConfirm("読み込んだ下絵をクリアしますか？（ドット絵データは消えません）");
             if (confirmed) {
                 traceBg.style.backgroundImage = "none";
                 traceBg.style.opacity = 0;
@@ -1443,14 +1467,19 @@
 
         // --- ローカルストレージ自動保存 ---
         function saveToLocalStorage() {
-            const localData = {
-                gridW: gridW,
-                gridH: gridH,
-                gridData: gridData,
-                recentColors: recentColors,
-                currentColor: currentColor
-            };
-            localStorage.setItem("pixel_art_auto_save_v4_shape", JSON.stringify(localData));
+            try {
+                const localData = {
+                    gridW: gridW,
+                    gridH: gridH,
+                    gridData: gridData,
+                    recentColors: recentColors,
+                    currentColor: currentColor
+                };
+                localStorage.setItem("pixel_art_auto_save_v4_shape", JSON.stringify(localData));
+            } catch (e) {
+                // サンドボックス化されたiframe（Googleサイト埋め込み等）ではlocalStorageが
+                // 使えないことがあるが、その場合も他の操作は問題なく続行できるようにする
+            }
         }
 
         function tryLoadFromLocalStorage() {
@@ -1505,7 +1534,7 @@
 
             toastMsg.textContent = message;
             toastIcon.setAttribute("data-lucide", iconName);
-            lucide.createIcons({ attrs: { class: 'w-3.5 h-3.5 text-pink-500' } });
+            lucide.createIcons({ attrs: { class: 'w-3.5 h-3.5 text-black' } });
 
             toast.classList.remove("translate-y-20", "opacity-0");
             toast.classList.add("translate-y-0", "opacity-100");
