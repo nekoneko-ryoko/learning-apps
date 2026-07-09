@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ローマ字れんしゅう</title>
+<style>
+:root{
+  --pink:#ff6b9d;--pink-l:#ffe0ee;
+  --blue:#5ba8ff;--blue-l:#deeeff;
+  --yellow:#ffce47;--green:#47cc8a;
+  --gray:#aaa;--text:#333;
+  --bg:#fffdf5;--card:#fff;
+}
+*{box-sizing:border-box}
+body{
+  font-family:'Klee One','Hiragino Kaku Gothic ProN',sans-serif;
+  background:var(--bg);color:var(--text);
+  height:100dvh;display:flex;flex-direction:column;overflow:hidden;
+  margin:0;
+}
+header{
+  background:var(--pink);padding:6px 12px;
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+  box-shadow:0 2px 6px rgba(255,107,157,.3);
+}
+header h1{color:#fff;font-size:1rem;flex:1;margin:0}
+
+.layout{flex:1;display:flex;overflow:hidden;min-height:0}
+.left-panel{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:8px;gap:6px;overflow:hidden;min-width:0;
+}
+.right-panel{
+  width:280px;flex-shrink:0;border-left:2px solid var(--pink-l);
+  display:flex;flex-direction:column;overflow:hidden;background:#fffaf7;
+}
+
+/* モードトグル */
+.mode-toggle{
+  display:flex;width:100%;max-width:460px;border-radius:10px;overflow:hidden;
+  border:2px solid var(--pink-l);flex-shrink:0;
+}
+.mode-btn{
+  flex:1;padding:5px 6px;border:none;background:#fdf0f5;
+  font-family:inherit;font-size:0.72rem;font-weight:bold;
+  cursor:pointer;color:var(--gray);transition:all .15s;
+}
+.mode-btn.active-anim{background:var(--pink);color:#fff}
+.mode-btn.active-trace{background:var(--blue);color:#fff}
+
+/* サイズ切替 */
+.btn-row{display:flex;gap:4px;width:100%;max-width:460px;flex-wrap:wrap;justify-content:center;flex-shrink:0}
+.spd-btn{
+  padding:3px 8px;border:2px solid #eee;border-radius:8px;background:#fff;
+  font-family:inherit;font-size:0.68rem;font-weight:bold;
+  cursor:pointer;color:var(--gray);transition:all .12s;
+}
+.spd-btn.sel{background:var(--yellow);border-color:#e6b800;color:#333;font-weight:bold}
+.n-btn{
+  padding:4px 10px;border:none;border-radius:8px;background:var(--blue-l);
+  font-family:inherit;font-size:0.75rem;font-weight:bold;color:var(--blue);cursor:pointer;
+}
+.n-btn:disabled{opacity:.3;cursor:default}
+.nav-row{display:flex;align-items:center;gap:4px;flex-shrink:0;width:100%;max-width:460px;justify-content:center}
+.nav-ch{font-size:0.85rem;color:var(--pink);font-weight:bold;flex:1;text-align:center}
+
+/* キャンバス共通 */
+.canvas-wrap{
+  position:relative;border-radius:12px;overflow:hidden;flex-shrink:0;
+  border:3px solid var(--pink-l);background:#fffdf5;max-width:100%;
+}
+canvas{position:absolute;inset:0;width:100%;height:100%}
+#cv-guide{z-index:1}
+#cv-anim{z-index:2}
+#cv-trace{z-index:3;touch-action:none}
+
+.stroke-label{font-size:0.7rem;color:var(--gray)}
+.score-msg{font-size:0.72rem;color:var(--green);font-weight:bold;flex:1;text-align:center}
+
+.s-btn{
+  padding:6px 14px;border:none;border-radius:10px;color:#fff;
+  font-family:inherit;font-size:0.78rem;font-weight:bold;cursor:pointer;
+}
+.btn-gray{background:#bbb}
+.btn-green{background:var(--green)}
+.btn-yellow{background:var(--yellow);color:#333}
+
+/* 訓令式/ヘボン式 */
+.reading-row{display:flex;gap:6px;justify-content:center;flex-shrink:0}
+.read-btn{
+  padding:4px 14px;border-radius:16px;border:2px solid var(--pink-l);background:#fff;
+  font-family:inherit;font-size:0.72rem;font-weight:bold;color:var(--gray);cursor:pointer;
+}
+.read-btn.sel{background:var(--pink);border-color:var(--pink);color:#fff}
+.current-word{font-size:1.6rem;font-weight:bold;color:var(--pink);text-align:center}
+.current-kana{font-size:1rem;color:var(--gray)}
+
+/* 右パネル：タブ */
+.tab-row{display:flex;border-bottom:2px solid var(--pink-l);flex-shrink:0}
+.kana-tab{
+  flex:1;padding:8px 4px;border:none;background:#fff;font-family:inherit;
+  font-size:0.78rem;font-weight:bold;color:var(--gray);cursor:pointer;
+}
+.kana-tab.active{background:var(--pink);border-color:var(--pink);color:#fff;font-weight:bold}
+
+/* 単字グリッド */
+.az-grid{
+  display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:8px;overflow-y:auto;flex:1;
+}
+.az-btn{
+  aspect-ratio:1;border:2px solid var(--pink-l);border-radius:8px;background:#fff;
+  font-family:inherit;font-size:1rem;font-weight:bold;color:var(--text);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.az-btn.sel{background:var(--pink-l);border-color:var(--pink);color:var(--pink)}
+
+/* 音節グリッド */
+.onsetsu-scroll{flex:1;overflow-y:auto;padding:6px}
+.onsetsu-section-title{
+  font-size:0.68rem;color:var(--gray);font-weight:bold;margin:8px 4px 3px;
+  padding-bottom:2px;border-bottom:1px solid #eee;
+}
+.onsetsu-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;padding:0 2px}
+.on-btn{
+  border:2px solid var(--blue-l);border-radius:7px;background:#fff;
+  font-family:inherit;cursor:pointer;padding:3px 1px;
+  display:flex;flex-direction:column;align-items:center;line-height:1.15;
+}
+.on-btn .k{font-size:0.85rem;font-weight:bold;color:var(--text)}
+.on-btn .r{font-size:0.55rem;color:var(--gray)}
+.on-btn.sel{background:var(--blue-l);border-color:var(--blue)}
+.on-btn.sel .k,.on-btn.sel .r{color:var(--blue)}
+
+.loading{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;color:var(--gray);font-size:0.8rem;background:rgba(255,253,245,0.9);z-index:5;
+}
+.spinner{
+  width:28px;height:28px;border:3px solid var(--pink-l);
+  border-top-color:var(--pink);border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔤 ローマ字れんしゅう</h1>
+</header>
+
+<div class="layout">
+
+  <!-- ===== 左：練習エリア ===== -->
+  <div class="left-panel">
+
+    <!-- モードトグル -->
+    <div class="mode-toggle">
+      <button class="mode-btn active-anim" id="btn-anim" onclick="setMode('anim')">▶ アニメ</button>
+      <button class="mode-btn" id="btn-trace" onclick="setMode('trace')">✏️ なぞる</button>
+    </div>
+
+    <!-- 訓令式/ヘボン式 切替 -->
+    <div class="reading-row" id="reading-row" style="display:none">
+      <button class="read-btn sel" id="read-kunrei" onclick="setReading('kunrei')">訓令式</button>
+      <button class="read-btn" id="read-hepburn" onclick="setReading('hepburn')">ヘボン式</button>
+    </div>
+
+    <div class="current-word" id="current-word">a</div>
+    <div class="current-kana" id="current-kana"></div>
+
+    <!-- キャンバス -->
+    <div class="canvas-wrap" id="canvas-wrap">
+      <canvas id="cv-guide"></canvas>
+      <canvas id="cv-anim"></canvas>
+      <canvas id="cv-trace"></canvas>
+      <div class="loading" id="loading" style="display:none"><div class="spinner"></div><div>よみこみ中…</div></div>
+    </div>
+
+    <!-- 前後ナビ -->
+    <div class="nav-row" id="nav-row">
+      <button class="n-btn" id="nav-prev" onclick="navItem(-1)">◀ まえ</button>
+      <div class="nav-ch" id="nav-ch"></div>
+      <button class="n-btn" id="nav-next" onclick="navItem(1)">つぎ ▶</button>
+    </div>
+
+    <!-- アニメ速度 -->
+    <div class="btn-row" id="speed-row">
+      <button class="spd-btn" onclick="setSpeed(0.6, this)">ゆっくり</button>
+      <button class="spd-btn sel" onclick="setSpeed(1, this)">ふつう</button>
+      <button class="spd-btn" onclick="setSpeed(1.8, this)">はやい</button>
+    </div>
+
+    <!-- なぞりボタン -->
+    <div class="btn-row" id="trace-btns" style="display:none">
+      <button class="s-btn btn-gray" onclick="clearTrace()">🗑 けす</button>
+      <button class="s-btn btn-green" onclick="checkTrace()">✓ できた！</button>
+    </div>
+    <!-- 書き順番号・ガイドトグル -->
+    <div class="btn-row" id="numtoggle-row" style="display:none">
+      <button class="spd-btn sel" id="btn-numtoggle" onclick="toggleStrokeNum()">🔢 書き順をひょうじ</button>
+      <button class="spd-btn sel" id="btn-guidetoggle" onclick="toggleGuideHighlight()">✨ なぞりガイド</button>
+    </div>
+
+  </div>
+
+  <!-- ===== 右：文字選択エリア ===== -->
+  <div class="right-panel">
+    <div class="tab-row">
+      <button class="kana-tab active" id="tab-tanji" onclick="setTab('tanji')">単字 a〜z</button>
+      <button class="kana-tab" id="tab-onsetsu" onclick="setTab('onsetsu')">音節（ローマ字表）</button>
+    </div>
+
+    <div class="btn-row" id="case-row" style="padding:6px 6px 0">
+      <button class="spd-btn sel" id="case-lower" onclick="setCaseMode('lower')">小文字 a b c</button>
+      <button class="spd-btn" id="case-upper" onclick="setCaseMode('upper')">大文字 A B C</button>
+    </div>
+    <div class="az-grid" id="az-grid"></div>
+    <div class="onsetsu-scroll" id="onsetsu-scroll" style="display:none"></div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// データ
+// ============================================================
+const LETTER_STROKES = {"a": [[[58, 60], [45, 52], [32, 53], [20, 62], [16, 75], [20, 90], [34, 99], [50, 98], [60, 89], [62, 75]], [[62, 60], [62, 100]]], "b": [[[20, 0], [20, 100]], [[20, 75], [35, 68], [50, 70], [58, 82], [55, 95], [40, 101], [25, 98], [20, 88]]], "c": [[[62, 60], [48, 51], [33, 52], [20, 62], [15, 75], [20, 90], [34, 99], [49, 99], [62, 90]]], "d": [[[60, 75], [45, 68], [30, 70], [22, 82], [25, 95], [40, 101], [55, 98], [60, 88]], [[60, 0], [60, 100]]], "e": [[[18, 78], [62, 78], [60, 65], [46, 52], [30, 53], [18, 64], [15, 80], [20, 93], [35, 100], [50, 98], [60, 90]]], "f": [[[55, 10], [45, 0], [33, 2], [27, 12], [27, 100]], [[15, 60], [45, 60]]], "g": [[[60, 60], [47, 51], [33, 52], [20, 62], [16, 75], [20, 90], [34, 99], [49, 98], [60, 88], [62, 74]], [[62, 60], [62, 115], [55, 133], [40, 138], [28, 133]]], "h": [[[20, 0], [20, 100]], [[20, 80], [30, 68], [45, 68], [55, 78], [58, 100]]], "i": [[[35, 50], [35, 100]], [[35, 33], [35, 34]]], "j": [[[45, 50], [45, 120], [38, 135], [25, 138], [15, 133]], [[45, 30], [45, 31]]], "k": [[[20, 0], [20, 100]], [[55, 55], [20, 75], [20, 75], [55, 100]]], "l": [[[30, 0], [30, 100]]], "m": [[[16, 50], [16, 100]], [[16, 52], [21, 50], [30, 50], [37, 58], [40, 72], [40, 100]], [[40, 52], [45, 50], [54, 50], [61, 58], [64, 72], [64, 100]]], "n": [[[20, 50], [20, 100]], [[20, 52], [26, 50], [36, 50], [45, 56], [50, 70], [52, 100]]], "o": [[[40, 52], [25, 58], [17, 75], [25, 92], [40, 100], [55, 92], [63, 75], [55, 58], [40, 52]]], "p": [[[20, 50], [20, 140]], [[20, 55], [35, 50], [50, 55], [57, 68], [54, 82], [38, 88], [22, 85]]], "q": [[[55, 58], [42, 51], [28, 53], [20, 63], [18, 78], [24, 92], [38, 99], [52, 96], [58, 85], [58, 68]], [[58, 60], [58, 130], [62, 138], [68, 136]]], "r": [[[22, 100], [22, 55], [22, 60], [30, 50], [45, 50], [52, 55]]], "s": [[[55, 58], [42, 50], [28, 52], [20, 60], [22, 70], [35, 75], [48, 80], [55, 90], [48, 98], [32, 100], [18, 92]]], "t": [[[35, 15], [35, 90], [40, 98], [48, 99]], [[18, 55], [50, 55]]], "u": [[[20, 50], [20, 82], [25, 95], [36, 100], [47, 95], [52, 82], [52, 50]]], "v": [[[18, 50], [35, 100], [35, 100], [55, 50]]], "w": [[[15, 50], [27, 100], [27, 100], [38, 65], [38, 65], [50, 100], [50, 100], [62, 50]]], "x": [[[18, 50], [58, 100]], [[58, 50], [18, 100]]], "y": [[[18, 50], [37, 98]], [[56, 50], [37, 98], [31, 116], [22, 134]]], "z": [[[18, 55], [58, 55], [58, 55], [20, 98], [20, 98], [60, 98]]]};
+
+const UPPER_STROKES = {"a": [[[18,100],[40,0]], [[40,0],[62,100]], [[26,65],[54,65]]], "b": [[[20,0],[20,100]], [[20,0],[40,0],[50,10],[50,28],[40,38],[20,38]], [[20,38],[44,38],[56,48],[56,82],[44,100],[20,100]]], "c": [[[58,20],[45,5],[28,5],[15,20],[10,50],[15,80],[28,95],[45,95],[58,80]]], "d": [[[20,0],[20,100]], [[20,0],[38,0],[52,15],[58,35],[58,65],[52,85],[38,100],[20,100]]], "e": [[[58,0],[20,0],[20,0],[20,100],[20,100],[58,100]], [[20,50],[48,50]]], "f": [[[58,0],[20,0],[20,0],[20,100]], [[20,50],[48,50]]], "g": [[[58,20],[45,5],[28,5],[15,20],[10,50],[15,80],[28,95],[45,95],[58,80],[58,58]], [[58,58],[38,58]]], "h": [[[20,0],[20,100]], [[58,0],[58,100]], [[20,50],[58,50]]], "i": [[[38,0],[38,100]]], "j": [[[50,0],[50,75],[45,92],[32,100],[18,95]]], "k": [[[20,0],[20,100]], [[58,0],[20,55],[20,55],[58,100]]], "l": [[[20,0],[20,100],[20,100],[55,100]]], "m": [[[16,100],[16,0],[16,0],[40,55],[40,55],[64,0],[64,0],[64,100]]], "n": [[[18,100],[18,0],[18,0],[58,100],[58,100],[58,0]]], "o": [[[40,0],[20,10],[10,35],[10,65],[20,90],[40,100],[60,90],[70,65],[70,35],[60,10],[40,0]]], "p": [[[20,0],[20,100]], [[20,0],[42,0],[54,12],[54,35],[42,47],[20,47]]], "q": [[[40,0],[20,10],[10,35],[10,65],[20,90],[40,100],[60,90],[70,65],[70,35],[60,10],[40,0]], [[50,80],[68,105]]], "r": [[[20,0],[20,100]], [[20,0],[42,0],[54,12],[54,35],[42,47],[20,47]], [[30,47],[58,100]]], "s": [[[56,15],[42,3],[25,5],[14,18],[16,32],[32,42],[48,50],[58,62],[56,82],[42,96],[24,97],[10,85]]], "t": [[[12,0],[64,0]], [[38,0],[38,100]]], "u": [[[18,0],[18,70],[26,92],[40,100],[54,92],[60,70],[60,0]]], "v": [[[14,0],[38,100],[38,100],[62,0]]], "w": [[[10,0],[26,100],[26,100],[40,40],[40,40],[54,100],[54,100],[70,0]]], "x": [[[14,0],[62,100]], [[62,0],[14,100]]], "y": [[[14,0],[38,50]], [[62,0],[38,50],[38,50],[38,100]]], "z": [[[14,0],[60,0],[60,0],[14,100],[14,100],[60,100]]]};
+
+const GOJUON = {"seion": [["あ", "a"], ["い", "i"], ["う", "u"], ["え", "e"], ["お", "o"], ["か", "ka"], ["き", "ki"], ["く", "ku"], ["け", "ke"], ["こ", "ko"], ["さ", "sa"], ["し", "si", "shi"], ["す", "su"], ["せ", "se"], ["そ", "so"], ["た", "ta"], ["ち", "ti", "chi"], ["つ", "tu", "tsu"], ["て", "te"], ["と", "to"], ["な", "na"], ["に", "ni"], ["ぬ", "nu"], ["ね", "ne"], ["の", "no"], ["は", "ha"], ["ひ", "hi"], ["ふ", "hu", "fu"], ["へ", "he"], ["ほ", "ho"], ["ま", "ma"], ["み", "mi"], ["む", "mu"], ["め", "me"], ["も", "mo"], ["や", "ya"], ["ゆ", "yu"], ["よ", "yo"], ["ら", "ra"], ["り", "ri"], ["る", "ru"], ["れ", "re"], ["ろ", "ro"], ["わ", "wa"], ["を", "wo", "o"], ["ん", "n"]], "dakuon": [["が", "ga"], ["ぎ", "gi"], ["ぐ", "gu"], ["げ", "ge"], ["ご", "go"], ["ざ", "za"], ["じ", "zi", "ji"], ["ず", "zu"], ["ぜ", "ze"], ["ぞ", "zo"], ["だ", "da"], ["ぢ", "zi", "ji"], ["づ", "zu"], ["で", "de"], ["ど", "do"], ["ば", "ba"], ["び", "bi"], ["ぶ", "bu"], ["べ", "be"], ["ぼ", "bo"], ["ぱ", "pa"], ["ぴ", "pi"], ["ぷ", "pu"], ["ぺ", "pe"], ["ぽ", "po"]], "youon": [["きゃ", "kya"], ["きゅ", "kyu"], ["きょ", "kyo"], ["しゃ", "sya", "sha"], ["しゅ", "syu", "shu"], ["しょ", "syo", "sho"], ["ちゃ", "tya", "cha"], ["ちゅ", "tyu", "chu"], ["ちょ", "tyo", "cho"], ["にゃ", "nya"], ["にゅ", "nyu"], ["にょ", "nyo"], ["ひゃ", "hya"], ["ひゅ", "hyu"], ["ひょ", "hyo"], ["みゃ", "mya"], ["みゅ", "myu"], ["みょ", "myo"], ["りゃ", "rya"], ["りゅ", "ryu"], ["りょ", "ryo"], ["ぎゃ", "gya"], ["ぎゅ", "gyu"], ["ぎょ", "gyo"], ["じゃ", "zya", "ja"], ["じゅ", "zyu", "ju"], ["じょ", "zyo", "jo"], ["びゃ", "bya"], ["びゅ", "byu"], ["びょ", "byo"], ["ぴゃ", "pya"], ["ぴゅ", "pyu"], ["ぴょ", "pyo"]]};
+
+const AZ = "abcdefghijklmnopqrstuvwxyz".split("");
+
+// 音節を順番にフラット化（prev/next用）
+const ONSETSU_FLAT = [];
+["seion","dakuon","youon"].forEach(sec => {
+  GOJUON[sec].forEach(cell => ONSETSU_FLAT.push(cell));
+});
+
+// ============================================================
+// 状態
+// ============================================================
+let tab = 'tanji';        // 'tanji' | 'onsetsu'
+let mode = 'anim';        // 'anim' | 'trace'
+let caseMode = 'lower';    // 'lower' | 'upper' （単字モードのみ）
+let curWord = 'a';         // 練習中の実際のローマ字（1文字 or 複数文字）
+let curKanaCell = null;    // 音節モードで選択中のセル（配列 [kana, kunrei, hepburn?]）
+let curReading = 'kunrei'; // 'kunrei' | 'hepburn'
+let tanjiIdx = 0;
+let onsetsuIdx = 0;
+let speedMul = 1;
+let showStrokeNum = true;
+let guideHighlightOn = true;
+let curTraceStroke = 0;
+let animRaf = null;
+let cvW = 300, cvH = 200;
+
+const LW = 90;   // 1文字ぶんの幅（内部座標系）
+const LH = 140;  // 高さ（topline=0, midline=50, baseline=100, descender=140）
+
+const cvGuide = document.getElementById('cv-guide');
+const cvAnim = document.getElementById('cv-anim');
+const cvTrace = document.getElementById('cv-trace');
+const wrap = document.getElementById('canvas-wrap');
+
+// ============================================================
+// 文字列 → ストローク列（複数文字を横に並べる）
+// ============================================================
+function buildWordStrokes(word) {
+  const strokes = [];
+  let xOff = 0;
+  for (const ch of word) {
+    const isUpper = ch >= 'A' && ch <= 'Z';
+    const table = isUpper ? UPPER_STROKES : LETTER_STROKES;
+    const letterStrokes = table[ch.toLowerCase()] || [];
+    letterStrokes.forEach(pts => {
+      strokes.push(pts.map(([x,y]) => [x + xOff, y]));
+    });
+    xOff += LW;
+  }
+  return { strokes, totalWidth: xOff };
+}
+
+// ============================================================
+// サイズ計算
+// ============================================================
+function calcSize() {
+  const { totalWidth } = buildWordStrokes(curWord);
+  const availW = document.querySelector('.left-panel').clientWidth - 20;
+  const availH = Math.max(140, window.innerHeight * 0.36);
+
+  let cellPx = availW / (totalWidth / LW);
+  cellPx = Math.min(cellPx, 170);
+  let h = cellPx * (LH / LW);
+  if (h > availH) {
+    h = availH;
+    cellPx = h * (LW / LH);
+  }
+  cvW = Math.floor(cellPx * (totalWidth / LW));
+  cvH = Math.floor(h);
+
+  wrap.style.width = cvW + 'px';
+  wrap.style.height = cvH + 'px';
+  [cvGuide, cvAnim, cvTrace].forEach(c => { c.width = cvW; c.height = cvH; });
+}
+window.addEventListener('resize', () => { calcSize(); redraw(); });
+
+// 内部座標(0..totalWidth, 0..LH) → キャンバスpx
+function sc() { return cvW / (buildWordStrokes(curWord).totalWidth); }
+
+// ============================================================
+// 4本線の背景（英語ノート）
+// ============================================================
+function drawFourLines(ctx) {
+  ctx.clearRect(0, 0, cvW, cvH);
+  ctx.fillStyle = '#fffdf5';
+  ctx.fillRect(0, 0, cvW, cvH);
+
+  const s = sc();
+  const yTop = 0, yMid = 50 * s, yBase = 100 * s, yDesc = 140 * s;
+
+  ctx.strokeStyle = '#a9c9e8';
+  ctx.lineWidth = 1.5;
+
+  // topline
+  ctx.beginPath(); ctx.moveTo(0, yTop + 1); ctx.lineTo(cvW, yTop + 1); ctx.stroke();
+  // baseline（少し太め）
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#5b8fc9';
+  ctx.beginPath(); ctx.moveTo(0, yBase); ctx.lineTo(cvW, yBase); ctx.stroke();
+  // descender line
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#a9c9e8';
+  ctx.beginPath(); ctx.moveTo(0, yDesc); ctx.lineTo(cvW, yDesc); ctx.stroke();
+  // midline（点線）
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = '#c3d9ef';
+  ctx.beginPath(); ctx.moveTo(0, yMid); ctx.lineTo(cvW, yMid); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 文字ごとの区切り線（薄く）
+  const letterCount = curWord.length;
+  ctx.strokeStyle = '#eef4fb';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < letterCount; i++) {
+    const x = i * LW * s;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, cvH); ctx.stroke();
+  }
+}
+
+// ============================================================
+// スムーズ線描画
+// ============================================================
+function drawSmoothLine(ctx, pts, color, lw) {
+  if (pts.length < 2) return;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lw;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length - 1; i++) {
+    const mx = (pts[i].x + pts[i+1].x) / 2;
+    const my = (pts[i].y + pts[i+1].y) / 2;
+    ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+  }
+  ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
+  ctx.stroke();
+}
+
+function drawStrokeBadge(ctx, pos, num, color) {
+  const s = sc();
+  const r = 11 * Math.min(1, s * 0.9);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, Math.max(8, r), 0, Math.PI*2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.max(9, r)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(num), pos.x, pos.y + 1);
+  ctx.restore();
+}
+
+function drawArrowHead(ctx, pts, color) {
+  if (pts.length < 2) return;
+  const end = pts[pts.length-1];
+  const prev = pts[pts.length-2];
+  const angle = Math.atan2(end.y - prev.y, end.x - prev.x);
+  const len = 12;
+  ctx.save();
+  ctx.translate(end.x, end.y);
+  ctx.rotate(angle);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(-len, len*0.55);
+  ctx.lineTo(-len*0.6, 0);
+  ctx.lineTo(-len, -len*0.55);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.restore();
+}
+
+// ============================================================
+// ガイド描画
+// ============================================================
+function redrawGuide(highlightIdx) {
+  const ctx = cvGuide.getContext('2d');
+  drawFourLines(ctx);
+
+  const { strokes } = buildWordStrokes(curWord);
+  const s = sc();
+  const hasHighlight = (typeof highlightIdx === 'number');
+
+  strokes.forEach((strokePts, i) => {
+    const pts = strokePts.map(([x,y]) => ({ x: x*s, y: y*s }));
+
+    if (!hasHighlight) {
+      drawSmoothLine(ctx, pts, 'rgba(91,168,255,0.4)', Math.max(3, 6*s));
+      if (showStrokeNum) drawStrokeBadge(ctx, pts[0], i+1, 'rgba(91,168,255,0.85)');
+      return;
+    }
+
+    const isCur = i === highlightIdx;
+    const isDone = i < highlightIdx;
+    const color = isCur ? 'rgba(255,107,157,0.9)' : (isDone ? 'rgba(160,160,160,0.25)' : 'rgba(210,210,210,0.2)');
+    const width = isCur ? Math.max(4, 7*s) : Math.max(3, 5*s);
+    drawSmoothLine(ctx, pts, color, width);
+
+    if (isCur) {
+      if (showStrokeNum) drawStrokeBadge(ctx, pts[0], i+1, 'rgba(255,107,157,0.95)');
+      drawArrowHead(ctx, pts, 'rgba(255,107,157,0.9)');
+    }
+  });
+}
+
+// ============================================================
+// アニメーションモード
+// ============================================================
+function startAnim() {
+  if (animRaf) { cancelAnimationFrame(animRaf); animRaf = null; }
+  const ctx = cvAnim.getContext('2d');
+  ctx.clearRect(0, 0, cvW, cvH);
+
+  const { strokes } = buildWordStrokes(curWord);
+  const s = sc();
+  const lw = Math.max(5, 8*s);
+  const info = document.getElementById('nav-ch');
+
+  const doneStrokes = [];
+  let sIdx = 0, segIdx = 0, segT = 0;
+
+  function drawFrame() {
+    ctx.clearRect(0, 0, cvW, cvH);
+    doneStrokes.forEach(pts => drawSmoothLine(ctx, pts, '#ff6b9d', lw));
+
+    if (sIdx >= strokes.length) { animRaf = null; return; }
+
+    const raw = strokes[sIdx].map(([x,y]) => ({ x: x*s, y: y*s }));
+    if (raw.length < 2) { doneStrokes.push(raw); sIdx++; segIdx=0; segT=0; animRaf = requestAnimationFrame(drawFrame); return; }
+
+    const totalSegs = raw.length - 1;
+    const curPts = [];
+    for (let i = 0; i <= segIdx; i++) curPts.push(raw[i]);
+    const a = raw[segIdx], b = raw[Math.min(segIdx+1, raw.length-1)];
+    const ix = a.x + (b.x - a.x) * segT;
+    const iy = a.y + (b.y - a.y) * segT;
+    curPts.push({ x: ix, y: iy });
+
+    drawSmoothLine(ctx, curPts, '#ff6b9d', lw);
+    // ペン先
+    ctx.beginPath();
+    ctx.arc(ix, iy, lw*0.6, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,107,157,0.75)';
+    ctx.fill();
+
+    const dist = Math.hypot(b.x-a.x, b.y-a.y);
+    const stepSize = Math.max(0.04, (0.045 * speedMul));
+    segT += stepSize * (14 / Math.max(6, dist*0.15+6));
+
+    if (segT >= 1) {
+      segT = 0; segIdx++;
+      if (segIdx >= totalSegs) {
+        doneStrokes.push(raw);
+        sIdx++; segIdx = 0;
+      }
+    }
+    animRaf = requestAnimationFrame(drawFrame);
+  }
+  drawFrame();
+}
+
+// ============================================================
+// なぞりモード
+// ============================================================
+function gPos(e, cv) {
+  const r = cv.getBoundingClientRect();
+  const cx = e.touches ? (e.touches[0] || e.changedTouches[0]).clientX : e.clientX;
+  const cy = e.touches ? (e.touches[0] || e.changedTouches[0]).clientY : e.clientY;
+  return {
+    x: (cx - r.left) * (cv.width / r.width),
+    y: (cy - r.top) * (cv.height / r.height)
+  };
+}
+
+let traceDrawing = false;
+let traceMarked = false;
+
+function setupTrace() {
+  const { strokes } = buildWordStrokes(curWord);
+  curTraceStroke = 0;
+  redrawGuide(guideHighlightOn ? curTraceStroke : undefined);
+
+  const ctx = cvTrace.getContext('2d');
+  ctx.clearRect(0, 0, cvW, cvH);
+  ctx.strokeStyle = '#ff6b9d';
+  ctx.lineWidth = Math.max(6, cvW*0.018);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  traceDrawing = false;
+  traceMarked = false;
+  document.getElementById('score-msg') && (document.getElementById('score-msg').textContent = '');
+
+  cvTrace.onpointerdown = e => {
+    e.preventDefault();
+    cvTrace.setPointerCapture(e.pointerId);
+    traceDrawing = true; traceMarked = true;
+    const p = gPos(e, cvTrace);
+    ctx.beginPath(); ctx.moveTo(p.x, p.y);
+  };
+  cvTrace.onpointermove = e => {
+    if (!traceDrawing) return;
+    e.preventDefault();
+    const p = gPos(e, cvTrace);
+    ctx.lineTo(p.x, p.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p.x, p.y);
+  };
+  cvTrace.onpointerup = cvTrace.onpointercancel = () => {
+    if (!traceDrawing) return;
+    traceDrawing = false;
+    if (!guideHighlightOn) return;
+    if (curTraceStroke < strokes.length) curTraceStroke++;
+    redrawGuide(curTraceStroke);
+    if (curTraceStroke >= strokes.length) {
+      setStatusMsg('✨ よくできました！');
+    }
+  };
+}
+
+function clearTrace() {
+  const ctx = cvTrace.getContext('2d');
+  ctx.clearRect(0, 0, cvW, cvH);
+  traceMarked = false;
+  curTraceStroke = 0;
+  redrawGuide(guideHighlightOn ? curTraceStroke : undefined);
+  setStatusMsg('');
+}
+
+function checkTrace() {
+  if (!traceMarked) { setStatusMsg('ゆびでなぞってみてね！'); return; }
+  setStatusMsg('✨ よくできました！つぎへ…');
+  setTimeout(() => { navItem(1); }, 900);
+}
+
+function setStatusMsg(msg) {
+  let el = document.getElementById('score-msg');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'score-msg';
+    el.className = 'score-msg';
+    document.getElementById('trace-btns').after(el);
+  }
+  el.textContent = msg;
+}
+
+// ============================================================
+// モード / タブ / 表示切替
+// ============================================================
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-anim').classList.toggle('active-anim', m==='anim');
+  document.getElementById('btn-trace').classList.toggle('active-trace', m==='trace');
+  document.getElementById('speed-row').style.display = m==='anim' ? 'flex' : 'none';
+  document.getElementById('trace-btns').style.display = m==='trace' ? 'flex' : 'none';
+  document.getElementById('numtoggle-row').style.display = m==='trace' ? 'flex' : 'none';
+  redraw();
+}
+
+function redraw() {
+  calcSize();
+  cvAnim.getContext('2d').clearRect(0,0,cvW,cvH);
+  cvTrace.getContext('2d').clearRect(0,0,cvW,cvH);
+  if (mode === 'anim') {
+    redrawGuide();
+    startAnim();
+  } else {
+    setupTrace();
+  }
+}
+
+function setTab(t) {
+  tab = t;
+  document.getElementById('tab-tanji').classList.toggle('active', t==='tanji');
+  document.getElementById('tab-onsetsu').classList.toggle('active', t==='onsetsu');
+  document.getElementById('case-row').style.display = t==='tanji' ? 'flex' : 'none';
+  document.getElementById('az-grid').style.display = t==='tanji' ? 'grid' : 'none';
+  document.getElementById('onsetsu-scroll').style.display = t==='onsetsu' ? 'block' : 'none';
+  if (t === 'tanji') { loadTanji(tanjiIdx); }
+  else { loadOnsetsu(onsetsuIdx); }
+}
+
+function setSpeed(v, btn) {
+  speedMul = v;
+  document.querySelectorAll('#speed-row .spd-btn').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+  if (mode === 'anim') startAnim();
+}
+
+function toggleStrokeNum() {
+  showStrokeNum = !showStrokeNum;
+  const btn = document.getElementById('btn-numtoggle');
+  btn.classList.toggle('sel', showStrokeNum);
+  btn.textContent = showStrokeNum ? '🔢 書き順をひょうじ' : '🔢 書き順をかくす';
+  redrawGuide(mode==='trace' ? (guideHighlightOn ? curTraceStroke : undefined) : undefined);
+}
+
+function toggleGuideHighlight() {
+  guideHighlightOn = !guideHighlightOn;
+  const btn = document.getElementById('btn-guidetoggle');
+  btn.classList.toggle('sel', guideHighlightOn);
+  btn.textContent = guideHighlightOn ? '✨ なぞりガイド' : '✨ ガイドなし';
+  redrawGuide(mode==='trace' ? (guideHighlightOn ? curTraceStroke : undefined) : undefined);
+}
+
+function setReading(r) {
+  curReading = r;
+  document.getElementById('read-kunrei').classList.toggle('sel', r==='kunrei');
+  document.getElementById('read-hepburn').classList.toggle('sel', r==='hepburn');
+  applyCurrentKanaReading();
+}
+
+function applyCurrentKanaReading() {
+  if (!curKanaCell) return;
+  const [kana, kunrei, hepburn] = curKanaCell;
+  const hasHepburn = !!hepburn;
+  document.getElementById('reading-row').style.display = hasHepburn ? 'flex' : 'none';
+  curWord = (curReading === 'hepburn' && hasHepburn) ? hepburn : kunrei;
+  document.getElementById('current-word').textContent = curWord;
+  document.getElementById('current-kana').textContent = kana;
+  redraw();
+}
+
+// ============================================================
+// 単字（a〜z）
+// ============================================================
+function buildAzGrid() {
+  const grid = document.getElementById('az-grid');
+  grid.innerHTML = '';
+  AZ.forEach((ch, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'az-btn';
+    btn.textContent = caseMode === 'upper' ? ch.toUpperCase() : ch;
+    btn.onclick = () => loadTanji(i);
+    grid.appendChild(btn);
+  });
+}
+
+function setCaseMode(m) {
+  caseMode = m;
+  document.getElementById('case-lower').classList.toggle('sel', m==='lower');
+  document.getElementById('case-upper').classList.toggle('sel', m==='upper');
+  buildAzGrid();
+  loadTanji(tanjiIdx);
+}
+
+function loadTanji(idx) {
+  tanjiIdx = idx;
+  curKanaCell = null;
+  document.getElementById('reading-row').style.display = 'none';
+  curWord = caseMode === 'upper' ? AZ[idx].toUpperCase() : AZ[idx];
+  document.getElementById('current-word').textContent = curWord;
+  document.getElementById('current-kana').textContent = '';
+  document.querySelectorAll('.az-btn').forEach((b,i) => b.classList.toggle('sel', i===idx));
+  document.getElementById('nav-ch').textContent = `${idx+1} / ${AZ.length}`;
+  document.getElementById('nav-prev').disabled = idx===0;
+  document.getElementById('nav-next').disabled = idx===AZ.length-1;
+  redraw();
+}
+
+// ============================================================
+// 音節（ローマ字表）
+// ============================================================
+function buildOnsetsuGrid() {
+  const wrap = document.getElementById('onsetsu-scroll');
+  wrap.innerHTML = '';
+  const sections = [['seion','せいおん'], ['dakuon','だくおん・はんだくおん'], ['youon','ようおん']];
+  let flatIdx = 0;
+  sections.forEach(([key, label]) => {
+    const title = document.createElement('div');
+    title.className = 'onsetsu-section-title';
+    title.textContent = label;
+    wrap.appendChild(title);
+
+    const grid = document.createElement('div');
+    grid.className = 'onsetsu-grid';
+    GOJUON[key].forEach(cell => {
+      const idx = flatIdx++;
+      const btn = document.createElement('button');
+      btn.className = 'on-btn';
+      const readLabel = cell[2] ? `${cell[1]}/${cell[2]}` : cell[1];
+      btn.innerHTML = `<span class="k">${cell[0]}</span><span class="r">${readLabel}</span>`;
+      btn.onclick = () => loadOnsetsu(idx);
+      grid.appendChild(btn);
+    });
+    wrap.appendChild(grid);
+  });
+}
+
+function loadOnsetsu(idx) {
+  onsetsuIdx = idx;
+  const cell = ONSETSU_FLAT[idx];
+  curKanaCell = cell;
+  curReading = 'kunrei';
+  document.getElementById('read-kunrei').classList.add('sel');
+  document.getElementById('read-hepburn').classList.remove('sel');
+  applyCurrentKanaReading();
+
+  document.querySelectorAll('.on-btn').forEach((b,i) => b.classList.toggle('sel', i===idx));
+  document.getElementById('nav-ch').textContent = `${idx+1} / ${ONSETSU_FLAT.length}`;
+  document.getElementById('nav-prev').disabled = idx===0;
+  document.getElementById('nav-next').disabled = idx===ONSETSU_FLAT.length-1;
+}
+
+function navItem(d) {
+  if (tab === 'tanji') {
+    const n = tanjiIdx + d;
+    if (n<0 || n>=AZ.length) return;
+    loadTanji(n);
+  } else {
+    const n = onsetsuIdx + d;
+    if (n<0 || n>=ONSETSU_FLAT.length) return;
+    loadOnsetsu(n);
+  }
+}
+
+// ============================================================
+// 初期化
+// ============================================================
+buildAzGrid();
+buildOnsetsuGrid();
+loadTanji(0);
+</script>
+</body>
+</html>
