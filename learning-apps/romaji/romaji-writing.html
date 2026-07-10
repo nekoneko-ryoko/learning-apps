@@ -99,8 +99,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
 /* 右パネル：タブ */
 .tab-row{display:flex;border-bottom:2px solid var(--pink-l);flex-shrink:0}
 .kana-tab{
-  flex:1;padding:8px 4px;border:none;background:#fff;font-family:inherit;
-  font-size:0.78rem;font-weight:bold;color:var(--gray);cursor:pointer;
+  flex:1;padding:8px 2px;border:none;background:#fff;font-family:inherit;
+  font-size:0.7rem;font-weight:bold;color:var(--gray);cursor:pointer;
 }
 .kana-tab.active{background:var(--pink);border-color:var(--pink);color:#fff;font-weight:bold}
 
@@ -209,7 +209,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
   <div class="right-panel">
     <div class="tab-row">
       <button class="kana-tab active" id="tab-tanji" onclick="setTab('tanji')">単字 a〜z</button>
-      <button class="kana-tab" id="tab-onsetsu" onclick="setTab('onsetsu')">音節（ローマ字表）</button>
+      <button class="kana-tab" id="tab-onsetsu" onclick="setTab('onsetsu')">音節</button>
+      <button class="kana-tab" id="tab-tango" onclick="setTab('tango')">たんご</button>
     </div>
 
     <div class="btn-row" id="case-row" style="padding:6px 6px 0">
@@ -218,6 +219,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
     </div>
     <div class="az-grid" id="az-grid"></div>
     <div class="onsetsu-scroll" id="onsetsu-scroll" style="display:none"></div>
+    <div class="onsetsu-scroll" id="tango-scroll" style="display:none"></div>
   </div>
 
 </div>
@@ -240,10 +242,26 @@ const ONSETSU_FLAT = [];
   GOJUON[sec].forEach(cell => ONSETSU_FLAT.push(cell));
 });
 
+// よく使う単語（3年生の学校生活でよく出る言葉）
+const WORDS = [
+  ["がっこう", "gakkou"],
+  ["せんせい", "sensei"],
+  ["ともだち", "tomodachi"],
+  ["としょかん", "toshokan"],
+  ["きゅうしょく", "kyuushoku"],
+  ["こくご", "kokugo"],
+  ["さんすう", "sansuu"],
+  ["たいいく", "taiiku"],
+  ["じゅぎょう", "jugyou"],
+  ["きゅうけい", "kyuukei"],
+  ["なまえ", "namae"],
+  ["かぞく", "kazoku"],
+];
+
 // ============================================================
 // 状態
 // ============================================================
-let tab = 'tanji';        // 'tanji' | 'onsetsu'
+let tab = 'tanji';        // 'tanji' | 'onsetsu' | 'tango'
 let mode = 'anim';        // 'anim' | 'trace'
 let caseMode = 'lower';    // 'lower' | 'upper' （単字モードのみ）
 let curWord = 'a';         // 練習中の実際のローマ字（1文字 or 複数文字）
@@ -251,6 +269,7 @@ let curKanaCell = null;    // 音節モードで選択中のセル（配列 [kan
 let curReading = 'kunrei'; // 'kunrei' | 'hepburn'
 let tanjiIdx = 0;
 let onsetsuIdx = 0;
+let tangoIdx = 0;
 let speedMul = 1;
 let showStrokeNum = true;
 let guideHighlightOn = true;
@@ -608,11 +627,14 @@ function setTab(t) {
   tab = t;
   document.getElementById('tab-tanji').classList.toggle('active', t==='tanji');
   document.getElementById('tab-onsetsu').classList.toggle('active', t==='onsetsu');
+  document.getElementById('tab-tango').classList.toggle('active', t==='tango');
   document.getElementById('case-row').style.display = t==='tanji' ? 'flex' : 'none';
   document.getElementById('az-grid').style.display = t==='tanji' ? 'grid' : 'none';
   document.getElementById('onsetsu-scroll').style.display = t==='onsetsu' ? 'block' : 'none';
+  document.getElementById('tango-scroll').style.display = t==='tango' ? 'block' : 'none';
   if (t === 'tanji') { loadTanji(tanjiIdx); }
-  else { loadOnsetsu(onsetsuIdx); }
+  else if (t === 'onsetsu') { loadOnsetsu(onsetsuIdx); }
+  else { loadTango(tangoIdx); }
 }
 
 function setSpeed(v, btn) {
@@ -731,10 +753,50 @@ function loadOnsetsu(idx) {
   document.getElementById('read-hepburn').classList.remove('sel');
   applyCurrentKanaReading();
 
-  document.querySelectorAll('.on-btn').forEach((b,i) => b.classList.toggle('sel', i===idx));
+  document.querySelectorAll('#onsetsu-scroll .on-btn').forEach((b,i) => b.classList.toggle('sel', i===idx));
   document.getElementById('nav-ch').textContent = `${idx+1} / ${ONSETSU_FLAT.length}`;
   document.getElementById('nav-prev').disabled = idx===0;
   document.getElementById('nav-next').disabled = idx===ONSETSU_FLAT.length-1;
+}
+
+// ============================================================
+// たんご（よく使う単語）
+// ============================================================
+function buildWordsGrid() {
+  const wrap = document.getElementById('tango-scroll');
+  wrap.innerHTML = '';
+  const title = document.createElement('div');
+  title.className = 'onsetsu-section-title';
+  title.textContent = 'がっこうでよくつかうことば';
+  wrap.appendChild(title);
+
+  const grid = document.createElement('div');
+  grid.className = 'onsetsu-grid';
+  grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+  WORDS.forEach((w, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'on-btn';
+    btn.innerHTML = `<span class="k">${w[0]}</span><span class="r">${w[1]}</span>`;
+    btn.onclick = () => loadTango(idx);
+    grid.appendChild(btn);
+  });
+  wrap.appendChild(grid);
+}
+
+function loadTango(idx) {
+  tangoIdx = idx;
+  curKanaCell = null;
+  document.getElementById('reading-row').style.display = 'none';
+  const [kana, romaji] = WORDS[idx];
+  curWord = romaji;
+  document.getElementById('current-word').textContent = curWord;
+  document.getElementById('current-kana').textContent = kana;
+
+  document.querySelectorAll('#tango-scroll .on-btn').forEach((b,i) => b.classList.toggle('sel', i===idx));
+  document.getElementById('nav-ch').textContent = `${idx+1} / ${WORDS.length}`;
+  document.getElementById('nav-prev').disabled = idx===0;
+  document.getElementById('nav-next').disabled = idx===WORDS.length-1;
+  redraw();
 }
 
 function navItem(d) {
@@ -742,10 +804,14 @@ function navItem(d) {
     const n = tanjiIdx + d;
     if (n<0 || n>=AZ.length) return;
     loadTanji(n);
-  } else {
+  } else if (tab === 'onsetsu') {
     const n = onsetsuIdx + d;
     if (n<0 || n>=ONSETSU_FLAT.length) return;
     loadOnsetsu(n);
+  } else {
+    const n = tangoIdx + d;
+    if (n<0 || n>=WORDS.length) return;
+    loadTango(n);
   }
 }
 
@@ -754,6 +820,7 @@ function navItem(d) {
 // ============================================================
 buildAzGrid();
 buildOnsetsuGrid();
+buildWordsGrid();
 loadTanji(0);
 </script>
 </body>
