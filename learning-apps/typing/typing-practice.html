@@ -125,13 +125,13 @@ header h1{color:#fff;font-size:1rem;flex:1;margin:0}
 }
 .card-popup.show{ display:flex; }
 .card-popup-inner{
-  background:#fff;border-radius:20px;padding:28px 32px;text-align:center;
+  background:#fff;border-radius:20px;padding:28px 26px;text-align:center;
   box-shadow:0 12px 30px rgba(0,0,0,.3);
   animation:popin .35s ease;
-  max-width:280px;
+  max-width:300px;
 }
 @keyframes popin{ 0%{transform:scale(.6);opacity:0} 100%{transform:scale(1);opacity:1} }
-.card-popup-label{ font-size:0.9rem;font-weight:bold;color:var(--pink);margin-bottom:10px; }
+.card-popup-label{ font-size:0.78rem;font-weight:bold;color:var(--pink);margin-bottom:10px;line-height:1.5; }
 .card-mascot{ width:110px;height:110px; }
 .card-popup-name{ font-size:1.15rem;font-weight:bold;margin-top:8px; }
 .card-popup-rarity{ font-size:0.8rem;font-weight:bold;margin:4px 0 16px; }
@@ -168,6 +168,28 @@ header h1{color:#fff;font-size:1rem;flex:1;margin:0}
 .book-card.locked svg{ filter:grayscale(1); }
 .book-card.rare{ border-color:var(--blue); }
 .book-card.superrare{ border-color:var(--yellow); }
+.book-card.owned-clickable{ cursor:pointer; }
+.book-card.owned-clickable:active{ transform:scale(0.95); }
+.count-badge{
+  position:absolute;top:2px;right:4px;background:var(--pink);color:#fff;
+  font-size:0.55rem;font-weight:bold;border-radius:8px;padding:1px 5px;
+}
+
+/* カードのくわしい説明 */
+.card-detail{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);
+  z-index:220;align-items:center;justify-content:center;padding:20px;
+}
+.card-detail.show{ display:flex; }
+.card-detail-inner{
+  background:#fff;border-radius:20px;padding:28px 24px;text-align:center;
+  box-shadow:0 12px 30px rgba(0,0,0,.3);max-width:280px;position:relative;
+  animation:popin .3s ease;
+}
+.card-detail-desc{
+  font-size:0.78rem;color:var(--text);line-height:1.7;margin-top:6px;
+  background:var(--pink-l);border-radius:10px;padding:10px 12px;text-align:left;
+}
 </style>
 </head>
 <body>
@@ -231,6 +253,17 @@ header h1{color:#fff;font-size:1rem;flex:1;margin:0}
   </div>
 </div>
 
+<!-- カードのくわしい説明 -->
+<div class="card-detail" id="card-detail">
+  <div class="card-detail-inner">
+    <button class="close-btn" onclick="closeCardDetail()">✕</button>
+    <svg class="card-mascot" id="detail-mascot" viewBox="0 0 100 100"></svg>
+    <div class="card-popup-name" id="detail-name"></div>
+    <div class="card-popup-rarity" id="detail-rarity"></div>
+    <div class="card-detail-desc" id="detail-desc"></div>
+  </div>
+</div>
+
 
 <script>
 // ============================================================
@@ -251,18 +284,18 @@ const CATS = [
 
 // ねこカード図鑑データ
 const CARD_DEFS = [
-  { id:"white",   name:"しろねこ",       rarity:"normal",    color:"#ffffff" },
-  { id:"orange",  name:"みかんねこ",     rarity:"normal",    color:"#ffb366" },
-  { id:"gray",    name:"ぐれーねこ",     rarity:"normal",    color:"#cfcfcf" },
-  { id:"black",   name:"くろねこ",       rarity:"normal",    color:"#5a5a5a" },
-  { id:"brown",   name:"ちゃとらねこ",   rarity:"normal",    color:"#c9975a" },
-  { id:"bow",     name:"リボンねこ",     rarity:"rare",      color:"#ffffff", accessory:"bow" },
-  { id:"hat",     name:"ぼうしねこ",     rarity:"rare",      color:"#ffffff", accessory:"hat" },
-  { id:"scarf",   name:"マフラーねこ",   rarity:"rare",      color:"#ffe6c2", accessory:"scarf" },
-  { id:"spots",   name:"ぶちねこ",       rarity:"rare",      color:"#ffffff", accessory:"spots" },
-  { id:"gold",    name:"きんいろねこ",   rarity:"superrare", color:"#ffd700" },
-  { id:"star",    name:"ほしぞらねこ",   rarity:"superrare", color:"#8b7cf6", accessory:"star" },
-  { id:"rainbow", name:"にじいろねこ",   rarity:"superrare", color:"#ff8fd6", accessory:"rainbow" }
+  { id:"white",   name:"しろねこ",       rarity:"normal",    color:"#ffffff", desc:"せいけつでのんびりや。ひなたぼっこがだいすき。とくい：おひるね" },
+  { id:"orange",  name:"みかんねこ",     rarity:"normal",    color:"#ffb366", desc:"げんきいっぱい！はしりまわるのがとくい。とくい：かけっこ" },
+  { id:"gray",    name:"ぐれーねこ",     rarity:"normal",    color:"#cfcfcf", desc:"しずかでかしこい。ほんをよむのがすき。とくい：ものしり" },
+  { id:"black",   name:"くろねこ",       rarity:"normal",    color:"#5a5a5a", desc:"よるがとくいで、ちょっぴりミステリアス。とくい：かくれんぼ" },
+  { id:"brown",   name:"ちゃとらねこ",   rarity:"normal",    color:"#c9975a", desc:"あまえんぼうで、だっこがだいすき。とくい：ごろごろ" },
+  { id:"bow",     name:"リボンねこ",     rarity:"rare",      color:"#ffffff", accessory:"bow", desc:"おしゃれさん。かがみをみるのがしゅみ。とくい：ポーズ" },
+  { id:"hat",     name:"ぼうしねこ",     rarity:"rare",      color:"#ffffff", accessory:"hat", desc:"ぼうけんかで、どこへでもでかけていく。とくい：たんけん" },
+  { id:"scarf",   name:"マフラーねこ",   rarity:"rare",      color:"#ffe6c2", accessory:"scarf", desc:"さむがりやで、あったかいばしょがだいすき。とくい：ぽかぽか" },
+  { id:"spots",   name:"ぶちねこ",       rarity:"rare",      color:"#ffffff", accessory:"spots", desc:"ゆかいなもようもちで、みんなのにんきもの。とくい：どうけつ" },
+  { id:"gold",    name:"きんいろねこ",   rarity:"superrare", color:"#ffd700", desc:"でんせつのねこ。あえたらとってもラッキー！とくい：きらきら" },
+  { id:"star",    name:"ほしぞらねこ",   rarity:"superrare", color:"#8b7cf6", accessory:"star", desc:"よぞらからやってきた、ふしぎなねこ。とくい：ほしみ" },
+  { id:"rainbow", name:"にじいろねこ",   rarity:"superrare", color:"#ff8fd6", accessory:"rainbow", desc:"あめあがりにだけあらわれる、まぼろしのねこ。とくい：にじたいそう" }
 ];
 const RARITY_LABEL = { normal:"ふつう", rare:"レア", superrare:"スーパーレア" };
 
@@ -284,13 +317,12 @@ const ENC = [
 // ============================================================
 let curCat = "seion";
 let curWord = null;
-let typedLen = 0;
 let mistakeThisWord = false;
 let starTotal = 0;
 let clearedMap = {}; // "cat:romaji" -> true (マスター済み単語の記録)
 let hintOn = true;
 let streak = 0;
-let ownedCards = {}; // id -> true
+let ownedCards = {}; // id -> まいすう（枚数）
 
 try {
   const savedStars = localStorage.getItem("typing_stars_v1");
@@ -404,17 +436,6 @@ function buildKeyboard() {
   });
 }
 
-function highlightNextKey() {
-  document.querySelectorAll('.key').forEach(k => k.classList.remove('next'));
-  const word = currentWord();
-  if (!word) return;
-  const romaji = word[1];
-  if (typedLen >= romaji.length) return;
-  const nextChar = romaji[typedLen];
-  const keyEl = document.getElementById('key-' + nextChar);
-  if (keyEl) keyEl.classList.add('next');
-}
-
 // ============================================================
 // 単語まわり
 // ============================================================
@@ -429,15 +450,59 @@ function pickRandomWord() {
   return w;
 }
 
+// ヘボン式のつづりから、訓令式のつづりを自動生成する
+// （し→shi/si、ち→chi/ti など、違うところだけ変換）
+function hepburnToKunrei(s) {
+  return s
+    .replaceAll('sha','sya').replaceAll('shu','syu').replaceAll('sho','syo').replaceAll('shi','si')
+    .replaceAll('cha','tya').replaceAll('chu','tyu').replaceAll('cho','tyo').replaceAll('chi','ti')
+    .replaceAll('tsu','tu')
+    .replaceAll('fu','hu')
+    .replaceAll('ja','zya').replaceAll('ju','zyu').replaceAll('jo','zyo').replaceAll('ji','zi');
+}
+
+let typedBuffer = ''; // ここまで正しく打てた文字（訓令式・ヘボン式どちらの表記か確定する前の生データ）
+
+function currentSpellings() {
+  const word = currentWord();
+  const primary = word[1];
+  const kunrei = hepburnToKunrei(primary);
+  return { primary, kunrei };
+}
+
+// 今のバッファにマッチしうる「つぎに押してよいキー」の集合
+// （訓令式・ヘボン式で分かれていればその両方が光る）
+function validNextChars() {
+  const { primary, kunrei } = currentSpellings();
+  const chars = new Set();
+  if (primary.startsWith(typedBuffer) && typedBuffer.length < primary.length) chars.add(primary[typedBuffer.length]);
+  if (kunrei.startsWith(typedBuffer) && typedBuffer.length < kunrei.length) chars.add(kunrei[typedBuffer.length]);
+  return chars;
+}
+
+// 表示用：まだ両方のつづりが有効ならヘボン式優先で表示する
+function activeSpelling() {
+  const { primary, kunrei } = currentSpellings();
+  return primary.startsWith(typedBuffer) ? primary : kunrei;
+}
+
+function highlightNextKey() {
+  document.querySelectorAll('.key').forEach(k => k.classList.remove('next'));
+  validNextChars().forEach(ch => {
+    const keyEl = document.getElementById('key-' + ch);
+    if (keyEl) keyEl.classList.add('next');
+  });
+}
+
 function renderTarget() {
   const word = currentWord();
   document.getElementById('target-kana').textContent = word[0];
-  const romaji = word[1];
+  const romaji = activeSpelling();
   let html = '';
   for (let i = 0; i < romaji.length; i++) {
-    if (i < typedLen) {
+    if (i < typedBuffer.length) {
       html += `<span class="done">${romaji[i]}</span>`;
-    } else if (i === typedLen) {
+    } else if (i === typedBuffer.length) {
       html += `<span class="cur">${hintOn ? romaji[i] : '_'}</span>`;
     } else {
       html += `<span class="rest">${hintOn ? romaji[i] : '_'}</span>`;
@@ -460,7 +525,7 @@ function renderStreak() {
 
 function loadNewWord() {
   curWord = pickRandomWord();
-  typedLen = 0;
+  typedBuffer = '';
   mistakeThisWord = false;
   drawMascot('normal');
   renderTarget();
@@ -472,17 +537,16 @@ function loadNewWord() {
 // 入力処理
 // ============================================================
 function handleInput(key) {
-  const word = currentWord();
-  const romaji = word[1];
-  const expected = romaji[typedLen];
+  const validChars = validNextChars();
 
-  if (key === expected) {
-    typedLen++;
+  if (validChars.has(key)) {
+    typedBuffer += key;
     renderTarget();
     const keyEl = document.getElementById('key-' + key);
     if (keyEl) { keyEl.classList.remove('next'); }
 
-    if (typedLen >= romaji.length) {
+    const { primary, kunrei } = currentSpellings();
+    if (typedBuffer === primary || typedBuffer === kunrei) {
       onWordComplete();
     } else {
       highlightNextKey();
@@ -545,11 +609,23 @@ function weightedRandomCard() {
 
 function awardRandomCard() {
   const card = weightedRandomCard();
-  ownedCards[card.id] = true;
+  const prevCount = ownedCards[card.id] || 0;
+  const newCount = prevCount + 1;
+  ownedCards[card.id] = newCount;
+
+  let bonusMsg = '';
+  if (newCount % 5 === 0) {
+    starTotal += 5;
+    document.getElementById('star-count').textContent = starTotal;
+    bonusMsg = ` 🎁 ${card.name}を${newCount}まい あつめたので ⭐+5！`;
+  }
   saveProgress();
   updateCardCountLabel();
 
-  document.getElementById('card-popup-label').textContent = '3れんぞく せいかい！ねこカードをゲット！';
+  const label = prevCount === 0
+    ? '3れんぞく せいかい！ねこカードを はじめてゲット！'
+    : `3れんぞく せいかい！${card.name}と、またあえた！（${newCount}まいめ）`;
+  document.getElementById('card-popup-label').textContent = label + bonusMsg;
   drawCardMascot('card-mascot', card);
   document.getElementById('card-popup-name').textContent = card.name;
   const rEl = document.getElementById('card-popup-rarity');
@@ -572,9 +648,11 @@ function openCardBook() {
   const grid = document.getElementById('card-book-grid');
   grid.innerHTML = '';
   CARD_DEFS.forEach(card => {
-    const owned = !!ownedCards[card.id];
+    const count = ownedCards[card.id] || 0;
+    const owned = count > 0;
     const cell = document.createElement('div');
-    cell.className = 'book-card' + (owned ? '' : ' locked') + (card.rarity !== 'normal' ? ' ' + card.rarity : '');
+    cell.className = 'book-card' + (owned ? ' owned-clickable' : ' locked') + (card.rarity !== 'normal' ? ' ' + card.rarity : '');
+    cell.style.position = 'relative';
     const svgWrap = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svgWrap.setAttribute('viewBox', '0 0 100 100');
     cell.appendChild(svgWrap);
@@ -582,10 +660,32 @@ function openCardBook() {
     nm.className = 'nm';
     nm.textContent = owned ? card.name : '？？？';
     cell.appendChild(nm);
+    if (count > 1) {
+      const badge = document.createElement('div');
+      badge.className = 'count-badge';
+      badge.textContent = '×' + count;
+      cell.appendChild(badge);
+    }
+    if (owned) cell.onclick = () => openCardDetail(card);
     grid.appendChild(cell);
     drawCardMascotInto(svgWrap, owned ? card : null);
   });
   document.getElementById('card-book').classList.add('show');
+}
+
+function openCardDetail(card) {
+  drawCardMascot('detail-mascot', card);
+  const count = ownedCards[card.id] || 0;
+  document.getElementById('detail-name').textContent = card.name + (count > 1 ? `（×${count}）` : '');
+  const rEl = document.getElementById('detail-rarity');
+  rEl.textContent = RARITY_LABEL[card.rarity];
+  rEl.className = 'card-popup-rarity ' + card.rarity;
+  document.getElementById('detail-desc').textContent = card.desc || '';
+  document.getElementById('card-detail').classList.add('show');
+}
+
+function closeCardDetail() {
+  document.getElementById('card-detail').classList.remove('show');
 }
 
 function closeCardBook() {
