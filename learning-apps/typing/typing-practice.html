@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>タイピングれんしゅう</title>
+<style>
+:root{
+  --pink:#ff6b9d;--pink-l:#ffe0ee;
+  --blue:#5ba8ff;--blue-l:#deeeff;
+  --yellow:#ffce47;--green:#47cc8a;
+  --gray:#aaa;--text:#333;
+  --bg:#fffdf5;--card:#fff;
+}
+*{box-sizing:border-box}
+body{
+  font-family:'Klee One','Hiragino Kaku Gothic ProN',sans-serif;
+  background:var(--bg);color:var(--text);
+  height:100dvh;display:flex;flex-direction:column;overflow:hidden;
+  margin:0;
+}
+header{
+  background:var(--pink);padding:6px 12px;
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+  box-shadow:0 2px 6px rgba(0,0,0,.25);
+}
+header h1{color:#fff;font-size:1rem;flex:1;margin:0}
+.stars-total{
+  color:#fff;font-size:0.85rem;font-weight:bold;
+  background:rgba(255,255,255,0.25);padding:3px 10px;border-radius:12px;
+}
+
+.layout{flex:1;display:flex;overflow:hidden;min-height:0}
+.left-panel{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:14px;gap:12px;overflow:auto;min-width:0;
+}
+
+@media (max-width: 760px) {
+  body{ overflow-y:auto !important; height:auto !important; min-height:100dvh; }
+  .layout{ height:auto !important; overflow:visible !important; }
+}
+
+/* カテゴリタブ（メニュー） */
+.tab-row{display:flex;border-bottom:2px solid var(--pink-l);flex-shrink:0;flex-wrap:wrap}
+.kana-tab{
+  flex:1;min-width:20%;padding:8px 2px;border:none;background:#fff;font-family:inherit;
+  font-size:0.68rem;font-weight:bold;color:var(--gray);cursor:pointer;
+}
+.kana-tab.active{background:var(--pink);color:#fff}
+
+/* マスコット＋出題エリア */
+.stage{
+  display:flex;align-items:center;gap:14px;flex-shrink:0;
+}
+.mascot{ width:72px;height:72px;flex-shrink:0; }
+.target-wrap{ text-align:center; }
+.target-kana{ font-size:2.4rem;font-weight:bold;color:var(--pink);line-height:1.1 }
+.target-romaji{
+  font-size:1.4rem;font-weight:bold;letter-spacing:2px;font-family:monospace;
+  margin-top:2px;
+}
+.target-romaji .done{ color:var(--green); }
+.target-romaji .cur{ color:var(--pink);text-decoration:underline; }
+.target-romaji .rest{ color:#ccc; }
+
+.toggle-row{ display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:center; }
+.toggle-btn{
+  padding:6px 14px;border:2px solid #ddd;border-radius:14px;background:#fff;
+  font-family:inherit;font-size:0.72rem;font-weight:bold;color:var(--gray);cursor:pointer;
+}
+.toggle-btn.sel{ background:var(--yellow);border-color:#e6b800;color:#333; }
+
+/* 連続正解 */
+.streak-row{
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+  background:var(--pink-l);padding:6px 16px;border-radius:16px;
+}
+.streak-label{ font-size:0.72rem;font-weight:bold;color:var(--pink); }
+#streak-paws{ font-size:1rem;letter-spacing:2px; }
+
+.status-msg{
+  font-size:1rem;font-weight:bold;color:var(--green);min-height:1.4em;text-align:center;
+}
+
+/* オンスクリーンキーボード */
+.kbd{
+  display:flex;flex-direction:column;gap:6px;align-items:center;
+  flex-shrink:0;width:100%;max-width:520px;
+}
+.kbd-row{ display:flex;gap:5px;justify-content:center; }
+.key{
+  width:38px;height:42px;border-radius:8px;border:2px solid #ddd;background:#fff;
+  font-family:monospace;font-size:1rem;font-weight:bold;color:var(--text);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  position:relative;transition:all .08s;
+  box-shadow:0 3px 0 #ddd;
+}
+.key:active{ transform:translateY(2px); box-shadow:0 1px 0 #ddd; }
+.key.home{ background:var(--blue-l);border-color:var(--blue); }
+.key.home::after{
+  content:"";position:absolute;bottom:5px;left:50%;transform:translateX(-50%);
+  width:5px;height:5px;border-radius:50%;background:var(--blue);
+}
+.key.fj-bump::after{ width:8px;height:2.5px;border-radius:2px; }
+.key.next{
+  background:var(--pink);border-color:var(--pink);color:#fff;
+  box-shadow:0 3px 0 #c44569;
+  animation:pulse 0.9s infinite;
+}
+@keyframes pulse{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
+.key.wrong{ background:#ff8080!important;border-color:#e05555!important;animation:shake .3s; }
+@keyframes shake{ 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+
+.s-btn{
+  padding:8px 22px;border:none;border-radius:14px;color:#fff;
+  font-family:inherit;font-size:0.85rem;font-weight:bold;cursor:pointer;
+}
+.btn-pink{ background:var(--pink); }
+
+/* カードゲット演出 */
+.card-popup{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);
+  z-index:200;align-items:center;justify-content:center;
+}
+.card-popup.show{ display:flex; }
+.card-popup-inner{
+  background:#fff;border-radius:20px;padding:28px 32px;text-align:center;
+  box-shadow:0 12px 30px rgba(0,0,0,.3);
+  animation:popin .35s ease;
+  max-width:280px;
+}
+@keyframes popin{ 0%{transform:scale(.6);opacity:0} 100%{transform:scale(1);opacity:1} }
+.card-popup-label{ font-size:0.9rem;font-weight:bold;color:var(--pink);margin-bottom:10px; }
+.card-mascot{ width:110px;height:110px; }
+.card-popup-name{ font-size:1.15rem;font-weight:bold;margin-top:8px; }
+.card-popup-rarity{ font-size:0.8rem;font-weight:bold;margin:4px 0 16px; }
+.card-popup-rarity.normal{ color:var(--gray); }
+.card-popup-rarity.rare{ color:var(--blue); }
+.card-popup-rarity.superrare{
+  background:linear-gradient(90deg,#ff6b9d,#ffce47,#5ba8ff);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+
+/* ねこカードずかん */
+.card-book{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);
+  z-index:200;align-items:center;justify-content:center;padding:20px;
+}
+.card-book.show{ display:flex; }
+.card-book-inner{
+  background:#fff;border-radius:18px;padding:20px;max-width:480px;width:100%;
+  max-height:80vh;display:flex;flex-direction:column;
+}
+.card-book-head{ display:flex;align-items:center;justify-content:space-between;margin-bottom:12px; }
+.card-book-head h2{ font-size:1rem;margin:0;color:var(--pink); }
+.close-btn{ border:none;background:#eee;border-radius:50%;width:28px;height:28px;font-size:0.9rem;cursor:pointer; }
+.card-book-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;overflow-y:auto;padding:4px;
+}
+.book-card{
+  border:2px solid #eee;border-radius:10px;padding:6px 2px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.book-card svg{ width:36px;height:36px; }
+.book-card .nm{ font-size:0.55rem;font-weight:bold;color:var(--text); }
+.book-card.locked{ opacity:.28; }
+.book-card.locked svg{ filter:grayscale(1); }
+.book-card.rare{ border-color:var(--blue); }
+.book-card.superrare{ border-color:var(--yellow); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⌨️ タイピングれんしゅう</h1>
+  <div class="stars-total">⭐ <span id="star-count">0</span></div>
+</header>
+
+<div class="tab-row" id="tab-row"></div>
+
+<div class="layout">
+
+  <div class="left-panel">
+
+    <div class="stage">
+      <svg class="mascot" id="mascot" viewBox="0 0 100 100"></svg>
+      <div class="target-wrap">
+        <div class="target-kana" id="target-kana">あ</div>
+        <div class="target-romaji" id="target-romaji"></div>
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <button class="toggle-btn sel" id="hint-toggle" onclick="toggleHint()">👀 ヒント：オン</button>
+      <button class="toggle-btn" onclick="openCardBook()">📖 ねこカードずかん (<span id="card-count">0</span>/<span id="card-total">0</span>)</button>
+    </div>
+
+    <div class="streak-row">
+      <span class="streak-label">れんぞくせいかい</span>
+      <span id="streak-paws"></span>
+    </div>
+
+    <div class="status-msg" id="status-msg"></div>
+
+    <div class="kbd" id="keyboard"></div>
+
+  </div>
+
+</div>
+
+<!-- カードゲット演出 -->
+<div class="card-popup" id="card-popup">
+  <div class="card-popup-inner">
+    <div class="card-popup-label" id="card-popup-label">ねこカードをゲット！</div>
+    <svg class="card-mascot" id="card-mascot" viewBox="0 0 100 100"></svg>
+    <div class="card-popup-name" id="card-popup-name"></div>
+    <div class="card-popup-rarity" id="card-popup-rarity"></div>
+    <button class="s-btn btn-pink" onclick="closeCardPopup()">やったー！</button>
+  </div>
+</div>
+
+<!-- ねこカードずかん -->
+<div class="card-book" id="card-book">
+  <div class="card-book-inner">
+    <div class="card-book-head">
+      <h2>ねこカードずかん</h2>
+      <button class="close-btn" onclick="closeCardBook()">✕</button>
+    </div>
+    <div class="card-book-grid" id="card-book-grid"></div>
+  </div>
+</div>
+
+
+<script>
+// ============================================================
+// データ
+// ============================================================
+const DATA = {"seion": [["あ", "a"], ["い", "i"], ["う", "u"], ["え", "e"], ["お", "o"], ["か", "ka"], ["き", "ki"], ["く", "ku"], ["け", "ke"], ["こ", "ko"], ["さ", "sa"], ["し", "shi"], ["す", "su"], ["せ", "se"], ["そ", "so"], ["た", "ta"], ["ち", "chi"], ["つ", "tsu"], ["て", "te"], ["と", "to"], ["な", "na"], ["に", "ni"], ["ぬ", "nu"], ["ね", "ne"], ["の", "no"], ["は", "ha"], ["ひ", "hi"], ["ふ", "fu"], ["へ", "he"], ["ほ", "ho"], ["ま", "ma"], ["み", "mi"], ["む", "mu"], ["め", "me"], ["も", "mo"], ["や", "ya"], ["ゆ", "yu"], ["よ", "yo"], ["ら", "ra"], ["り", "ri"], ["る", "ru"], ["れ", "re"], ["ろ", "ro"], ["わ", "wa"], ["を", "wo"], ["ん", "n"]], "dakuon": [["が", "ga"], ["ぎ", "gi"], ["ぐ", "gu"], ["げ", "ge"], ["ご", "go"], ["ざ", "za"], ["じ", "ji"], ["ず", "zu"], ["ぜ", "ze"], ["ぞ", "zo"], ["だ", "da"], ["ぢ", "ji"], ["づ", "zu"], ["で", "de"], ["ど", "do"], ["ば", "ba"], ["び", "bi"], ["ぶ", "bu"], ["べ", "be"], ["ぼ", "bo"], ["ぱ", "pa"], ["ぴ", "pi"], ["ぷ", "pu"], ["ぺ", "pe"], ["ぽ", "po"]], "youon": [["きゃ", "kya"], ["きゅ", "kyu"], ["きょ", "kyo"], ["しゃ", "sha"], ["しゅ", "shu"], ["しょ", "sho"], ["ちゃ", "cha"], ["ちゅ", "chu"], ["ちょ", "cho"], ["にゃ", "nya"], ["にゅ", "nyu"], ["にょ", "nyo"], ["ひゃ", "hya"], ["ひゅ", "hyu"], ["ひょ", "hyo"], ["みゃ", "mya"], ["みゅ", "myu"], ["みょ", "myo"], ["りゃ", "rya"], ["りゅ", "ryu"], ["りょ", "ryo"], ["ぎゃ", "gya"], ["ぎゅ", "gyu"], ["ぎょ", "gyo"], ["じゃ", "ja"], ["じゅ", "ju"], ["じょ", "jo"], ["びゃ", "bya"], ["びゅ", "byu"], ["びょ", "byo"], ["ぴゃ", "pya"], ["ぴゅ", "pyu"], ["ぴょ", "pyo"]], "sokuon": [["らっぱ", "rappa"], ["きっぷ", "kippu"], ["しっぽ", "shippo"], ["はっぱ", "happa"], ["がっき", "gakki"], ["けっせき", "kesseki"]], "words3": [["つくえ", "tsukue"], ["かばん", "kaban"], ["じしょ", "jisho"], ["ずかん", "zukan"], ["とけい", "tokei"], ["ほうき", "houki"], ["えのぐ", "enogu"], ["はさみ", "hasami"], ["こくご", "kokugo"], ["そうじ", "souji"], ["ずこう", "zukou"]], "shiritori": [["りんご", "ringo"], ["ごりら", "gorira"], ["らっぱ", "rappa"], ["ぱせり", "paseri"], ["りす", "risu"], ["すいか", "suika"], ["かさ", "kasa"], ["さかな", "sakana"], ["なす", "nasu"], ["すずめ", "suzume"], ["めだか", "medaka"], ["かめ", "kame"], ["めがね", "megane"], ["ねこ", "neko"], ["こま", "koma"], ["まくら", "makura"], ["らくだ", "rakuda"], ["だんご", "dango"], ["ごはん", "gohan"]], "gakkou": [["がっこう", "gakkou"], ["せんせい", "sensei"], ["ともだち", "tomodachi"], ["としょかん", "toshokan"], ["きゅうしょく", "kyuushoku"], ["こくご", "kokugo"], ["さんすう", "sansuu"], ["たいいく", "taiiku"], ["じゅぎょう", "jugyou"], ["きゅうけい", "kyuukei"], ["なまえ", "namae"], ["かぞく", "kazoku"], ["きょうしつ", "kyoushitsu"], ["おんがく", "ongaku"], ["こうてい", "koutei"]], "pokemon": [["ピカチュウ", "pikachuu"], ["ゼニガメ", "zenigame"], ["ヒトカゲ", "hitokage"], ["フシギダネ", "fushigidane"], ["プリン", "purin"], ["コダック", "kodakku"], ["ポッポ", "poppo"], ["コラッタ", "koratta"]]};
+
+const CATS = [
+  ["seion", "せいおん"],
+  ["dakuon", "だくおん"],
+  ["youon", "ようおん"],
+  ["sokuon", "ちいさい「っ」"],
+  ["words3", "3もじのことば"],
+  ["shiritori", "しりとり"],
+  ["gakkou", "がっこうのことば"],
+  ["pokemon", "ポケモン"]
+];
+
+// ねこカード図鑑データ
+const CARD_DEFS = [
+  { id:"white",   name:"しろねこ",       rarity:"normal",    color:"#ffffff" },
+  { id:"orange",  name:"みかんねこ",     rarity:"normal",    color:"#ffb366" },
+  { id:"gray",    name:"ぐれーねこ",     rarity:"normal",    color:"#cfcfcf" },
+  { id:"black",   name:"くろねこ",       rarity:"normal",    color:"#5a5a5a" },
+  { id:"brown",   name:"ちゃとらねこ",   rarity:"normal",    color:"#c9975a" },
+  { id:"bow",     name:"リボンねこ",     rarity:"rare",      color:"#ffffff", accessory:"bow" },
+  { id:"hat",     name:"ぼうしねこ",     rarity:"rare",      color:"#ffffff", accessory:"hat" },
+  { id:"scarf",   name:"マフラーねこ",   rarity:"rare",      color:"#ffe6c2", accessory:"scarf" },
+  { id:"spots",   name:"ぶちねこ",       rarity:"rare",      color:"#ffffff", accessory:"spots" },
+  { id:"gold",    name:"きんいろねこ",   rarity:"superrare", color:"#ffd700" },
+  { id:"star",    name:"ほしぞらねこ",   rarity:"superrare", color:"#8b7cf6", accessory:"star" },
+  { id:"rainbow", name:"にじいろねこ",   rarity:"superrare", color:"#ff8fd6", accessory:"rainbow" }
+];
+const RARITY_LABEL = { normal:"ふつう", rare:"レア", superrare:"スーパーレア" };
+
+
+const KEYROWS = [
+  "qwertyuiop".split(""),
+  "asdfghjkl".split(""),
+  "zxcvbnm".split("")
+];
+const HOME_KEYS = ["a","s","d","f","g","h","j","k","l"];
+const BUMP_KEYS = ["f","j"];
+
+const ENC = [
+  "すごい！","やったね！","じょうずだね！","かんぺき！","ばっちり！","その ちょうし！"
+];
+
+// ============================================================
+// 状態
+// ============================================================
+let curCat = "seion";
+let curWord = null;
+let typedLen = 0;
+let mistakeThisWord = false;
+let starTotal = 0;
+let clearedMap = {}; // "cat:romaji" -> true (マスター済み単語の記録)
+let hintOn = true;
+let streak = 0;
+let ownedCards = {}; // id -> true
+
+try {
+  const savedStars = localStorage.getItem("typing_stars_v1");
+  if (savedStars) starTotal = parseInt(savedStars, 10) || 0;
+  const savedCleared = localStorage.getItem("typing_cleared_v1");
+  if (savedCleared) clearedMap = JSON.parse(savedCleared);
+  const savedCards = localStorage.getItem("typing_cards_v1");
+  if (savedCards) ownedCards = JSON.parse(savedCards);
+} catch (e) {}
+
+function saveProgress() {
+  try {
+    localStorage.setItem("typing_stars_v1", String(starTotal));
+    localStorage.setItem("typing_cleared_v1", JSON.stringify(clearedMap));
+    localStorage.setItem("typing_cards_v1", JSON.stringify(ownedCards));
+  } catch (e) {}
+}
+
+// ============================================================
+// マスコット（ねこ）
+// ============================================================
+function drawMascot(state) {
+  const svg = document.getElementById('mascot');
+  const eyes = state === 'happy'
+    ? '<path d="M30 45 Q35 40 40 45" stroke="#333" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M60 45 Q65 40 70 45" stroke="#333" stroke-width="4" fill="none" stroke-linecap="round"/>'
+    : state === 'oops'
+    ? '<circle cx="35" cy="45" r="4" fill="#333"/><circle cx="65" cy="45" r="4" fill="#333"/><path d="M28 36 L42 40 M72 36 L58 40" stroke="#333" stroke-width="3" stroke-linecap="round"/>'
+    : '<circle cx="35" cy="45" r="4" fill="#333"/><circle cx="65" cy="45" r="4" fill="#333"/>';
+  const mouth = state === 'happy'
+    ? '<path d="M40 60 Q50 70 60 60" stroke="#333" stroke-width="3.5" fill="none" stroke-linecap="round"/>'
+    : state === 'oops'
+    ? '<circle cx="50" cy="62" r="4" fill="#333"/>'
+    : '<path d="M42 60 Q50 64 58 60" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>';
+
+  svg.innerHTML = `
+    <path d="M20 30 L28 10 L38 28 Z" fill="#ffb3d9"/>
+    <path d="M80 30 L72 10 L62 28 Z" fill="#ffb3d9"/>
+    <ellipse cx="50" cy="55" rx="38" ry="34" fill="#fff" stroke="#ffb3d9" stroke-width="3"/>
+    ${eyes}
+    <path d="M47 52 L53 52 L50 57 Z" fill="#ffb3d9"/>
+    ${mouth}
+    <path d="M20 58 Q5 55 8 60 M20 63 Q5 65 8 68" stroke="#ddd" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M80 58 Q95 55 92 60 M80 63 Q95 65 92 68" stroke="#ddd" stroke-width="2" fill="none" stroke-linecap="round"/>
+  `;
+}
+
+// カード用のねこ（毛色・アクセサリー違い）を任意のsvg要素に描画
+function drawCardMascotInto(svgEl, card) {
+  if (!card) {
+    svgEl.innerHTML = `<ellipse cx="50" cy="55" rx="38" ry="34" fill="#eee" stroke="#ddd" stroke-width="3"/>
+      <text x="50" y="63" font-size="26" text-anchor="middle" fill="#ccc">?</text>`;
+    return;
+  }
+  const furColor = card.color === 'rainbow' ? 'url(#rb-' + card.id + ')' : card.color;
+  let defs = '';
+  if (card.color === 'rainbow') {
+    defs = `<defs><linearGradient id="rb-${card.id}" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff6b9d"/><stop offset="50%" stop-color="#ffce47"/><stop offset="100%" stop-color="#5ba8ff"/>
+    </linearGradient></defs>`;
+  }
+  let accessory = '';
+  if (card.accessory === 'bow') {
+    accessory = '<path d="M40 30 L48 36 L40 42 Z M60 30 L52 36 L60 42 Z" fill="#ff6b9d"/><circle cx="50" cy="36" r="3" fill="#ff4d8d"/>';
+  } else if (card.accessory === 'hat') {
+    accessory = '<path d="M32 20 Q50 -2 68 20 Z" fill="#5ba8ff"/><rect x="30" y="18" width="40" height="6" rx="3" fill="#4590e0"/>';
+  } else if (card.accessory === 'scarf') {
+    accessory = '<path d="M22 62 Q50 76 78 62 L78 72 Q50 86 22 72 Z" fill="#ff6b9d"/>';
+  } else if (card.accessory === 'spots') {
+    accessory = '<ellipse cx="32" cy="48" rx="8" ry="7" fill="#e0995a"/><ellipse cx="66" cy="62" rx="7" ry="6" fill="#e0995a"/>';
+  } else if (card.accessory === 'star') {
+    accessory = '<text x="50" y="30" font-size="16" text-anchor="middle">✨</text>';
+  } else if (card.accessory === 'rainbow') {
+    accessory = '<path d="M20 40 Q50 10 80 40" stroke="#ff6b9d" stroke-width="3" fill="none"/>';
+  }
+
+  svgEl.innerHTML = `
+    ${defs}
+    <path d="M20 30 L28 10 L38 28 Z" fill="${furColor}" stroke="#ddd" stroke-width="1.5"/>
+    <path d="M80 30 L72 10 L62 28 Z" fill="${furColor}" stroke="#ddd" stroke-width="1.5"/>
+    <ellipse cx="50" cy="55" rx="38" ry="34" fill="${furColor}" stroke="#ddd" stroke-width="3"/>
+    <circle cx="35" cy="45" r="4" fill="#333"/><circle cx="65" cy="45" r="4" fill="#333"/>
+    <path d="M47 52 L53 52 L50 57 Z" fill="#ffb3d9"/>
+    <path d="M40 60 Q50 68 60 60" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>
+    ${accessory}
+  `;
+}
+function drawCardMascot(elId, card) {
+  drawCardMascotInto(document.getElementById(elId), card);
+}
+
+// ============================================================
+// キーボード
+// ============================================================
+function buildKeyboard() {
+  const kbd = document.getElementById('keyboard');
+  kbd.innerHTML = '';
+  KEYROWS.forEach(row => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'kbd-row';
+    row.forEach(k => {
+      const btn = document.createElement('button');
+      btn.className = 'key';
+      btn.id = 'key-' + k;
+      btn.textContent = k;
+      if (HOME_KEYS.includes(k)) btn.classList.add('home');
+      if (BUMP_KEYS.includes(k)) btn.classList.add('fj-bump');
+      btn.onclick = () => handleInput(k);
+      rowEl.appendChild(btn);
+    });
+    kbd.appendChild(rowEl);
+  });
+}
+
+function highlightNextKey() {
+  document.querySelectorAll('.key').forEach(k => k.classList.remove('next'));
+  const word = currentWord();
+  if (!word) return;
+  const romaji = word[1];
+  if (typedLen >= romaji.length) return;
+  const nextChar = romaji[typedLen];
+  const keyEl = document.getElementById('key-' + nextChar);
+  if (keyEl) keyEl.classList.add('next');
+}
+
+// ============================================================
+// 単語まわり
+// ============================================================
+function currentList() { return DATA[curCat]; }
+function currentWord() { return curWord; }
+
+function pickRandomWord() {
+  const list = currentList();
+  if (list.length === 1) return list[0];
+  let w;
+  do { w = list[Math.floor(Math.random() * list.length)]; } while (w === curWord);
+  return w;
+}
+
+function renderTarget() {
+  const word = currentWord();
+  document.getElementById('target-kana').textContent = word[0];
+  const romaji = word[1];
+  let html = '';
+  for (let i = 0; i < romaji.length; i++) {
+    if (i < typedLen) {
+      html += `<span class="done">${romaji[i]}</span>`;
+    } else if (i === typedLen) {
+      html += `<span class="cur">${hintOn ? romaji[i] : '_'}</span>`;
+    } else {
+      html += `<span class="rest">${hintOn ? romaji[i] : '_'}</span>`;
+    }
+  }
+  document.getElementById('target-romaji').innerHTML = html;
+}
+
+function setStatus(msg) {
+  document.getElementById('status-msg').textContent = msg;
+}
+
+function renderStreak() {
+  const need = 3; // 3れんぞくでカードゲット
+  const pos = streak % need;
+  let paws = '';
+  for (let i = 0; i < need; i++) paws += (i < pos ? '🐾' : '🔸');
+  document.getElementById('streak-paws').textContent = paws;
+}
+
+function loadNewWord() {
+  curWord = pickRandomWord();
+  typedLen = 0;
+  mistakeThisWord = false;
+  drawMascot('normal');
+  renderTarget();
+  highlightNextKey();
+  setStatus('');
+}
+
+// ============================================================
+// 入力処理
+// ============================================================
+function handleInput(key) {
+  const word = currentWord();
+  const romaji = word[1];
+  const expected = romaji[typedLen];
+
+  if (key === expected) {
+    typedLen++;
+    renderTarget();
+    const keyEl = document.getElementById('key-' + key);
+    if (keyEl) { keyEl.classList.remove('next'); }
+
+    if (typedLen >= romaji.length) {
+      onWordComplete();
+    } else {
+      highlightNextKey();
+    }
+  } else {
+    mistakeThisWord = true;
+    const keyEl = document.getElementById('key-' + key);
+    if (keyEl) {
+      keyEl.classList.add('wrong');
+      setTimeout(() => keyEl.classList.remove('wrong'), 300);
+    }
+    drawMascot('oops');
+    setTimeout(() => drawMascot('normal'), 500);
+  }
+}
+
+function onWordComplete() {
+  drawMascot('happy');
+  const msg = ENC[Math.floor(Math.random() * ENC.length)];
+  setStatus(msg + ' 🎉');
+
+  const word = currentWord();
+  const key = curCat + ':' + word[1];
+  if (!clearedMap[key]) {
+    clearedMap[key] = true;
+    starTotal++;
+    document.getElementById('star-count').textContent = starTotal;
+  }
+
+  if (!mistakeThisWord) {
+    streak++;
+  } else {
+    streak = 0;
+  }
+  renderStreak();
+  saveProgress();
+
+  const gotCard = (!mistakeThisWord && streak > 0 && streak % 3 === 0);
+
+  setTimeout(() => {
+    if (gotCard) {
+      awardRandomCard();
+    } else {
+      loadNewWord();
+    }
+  }, 1100);
+}
+
+// ============================================================
+// ねこカード
+// ============================================================
+function weightedRandomCard() {
+  const r = Math.random();
+  let pool;
+  if (r < 0.60) pool = CARD_DEFS.filter(c => c.rarity === 'normal');
+  else if (r < 0.90) pool = CARD_DEFS.filter(c => c.rarity === 'rare');
+  else pool = CARD_DEFS.filter(c => c.rarity === 'superrare');
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function awardRandomCard() {
+  const card = weightedRandomCard();
+  ownedCards[card.id] = true;
+  saveProgress();
+  updateCardCountLabel();
+
+  document.getElementById('card-popup-label').textContent = '3れんぞく せいかい！ねこカードをゲット！';
+  drawCardMascot('card-mascot', card);
+  document.getElementById('card-popup-name').textContent = card.name;
+  const rEl = document.getElementById('card-popup-rarity');
+  rEl.textContent = RARITY_LABEL[card.rarity];
+  rEl.className = 'card-popup-rarity ' + card.rarity;
+  document.getElementById('card-popup').classList.add('show');
+}
+
+function closeCardPopup() {
+  document.getElementById('card-popup').classList.remove('show');
+  loadNewWord();
+}
+
+function updateCardCountLabel() {
+  document.getElementById('card-count').textContent = Object.keys(ownedCards).length;
+  document.getElementById('card-total').textContent = CARD_DEFS.length;
+}
+
+function openCardBook() {
+  const grid = document.getElementById('card-book-grid');
+  grid.innerHTML = '';
+  CARD_DEFS.forEach(card => {
+    const owned = !!ownedCards[card.id];
+    const cell = document.createElement('div');
+    cell.className = 'book-card' + (owned ? '' : ' locked') + (card.rarity !== 'normal' ? ' ' + card.rarity : '');
+    const svgWrap = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svgWrap.setAttribute('viewBox', '0 0 100 100');
+    cell.appendChild(svgWrap);
+    const nm = document.createElement('div');
+    nm.className = 'nm';
+    nm.textContent = owned ? card.name : '？？？';
+    cell.appendChild(nm);
+    grid.appendChild(cell);
+    drawCardMascotInto(svgWrap, owned ? card : null);
+  });
+  document.getElementById('card-book').classList.add('show');
+}
+
+function closeCardBook() {
+  document.getElementById('card-book').classList.remove('show');
+}
+
+
+
+// 物理キーボード
+window.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k.length === 1 && k >= 'a' && k <= 'z') {
+    handleInput(k);
+  }
+});
+
+// ============================================================
+// タブ（メニュー）
+// ============================================================
+function buildTabs() {
+  const wrap = document.getElementById('tab-row');
+  wrap.innerHTML = '';
+  CATS.forEach(([key, label]) => {
+    const btn = document.createElement('button');
+    btn.className = 'kana-tab' + (key === curCat ? ' active' : '');
+    btn.dataset.cat = key;
+    btn.textContent = label;
+    btn.onclick = () => setCat(key);
+    wrap.appendChild(btn);
+  });
+}
+
+function toggleHint() {
+  hintOn = !hintOn;
+  const btn = document.getElementById('hint-toggle');
+  btn.classList.toggle('sel', hintOn);
+  btn.textContent = hintOn ? '👀 ヒント：オン' : '👀 ヒント：オフ';
+  renderTarget();
+}
+
+function setCat(key) {
+  curCat = key;
+  document.querySelectorAll('.kana-tab').forEach(b => b.classList.toggle('active', b.dataset.cat === key));
+  loadNewWord();
+}
+
+// ============================================================
+// 初期化
+// ============================================================
+buildKeyboard();
+buildTabs();
+document.getElementById('star-count').textContent = starTotal;
+updateCardCountLabel();
+renderStreak();
+loadNewWord();
+</script>
+
+</body>
+</html>
