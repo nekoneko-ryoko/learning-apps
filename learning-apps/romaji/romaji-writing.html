@@ -197,11 +197,6 @@ canvas{position:absolute;inset:0;width:100%;height:100%}
       <button class="s-btn btn-gray" onclick="clearTrace()">🗑 けす</button>
       <button class="s-btn btn-green" onclick="checkTrace()">✓ できた！</button>
     </div>
-    <!-- 書き順番号・ガイドトグル -->
-    <div class="btn-row" id="numtoggle-row" style="display:none">
-      <button class="spd-btn sel" id="btn-numtoggle" onclick="toggleStrokeNum()">🔢 書き順をひょうじ</button>
-      <button class="spd-btn sel" id="btn-guidetoggle" onclick="toggleGuideHighlight()">✨ なぞりガイド</button>
-    </div>
 
   </div>
 
@@ -271,9 +266,6 @@ let tanjiIdx = 0;
 let onsetsuIdx = 0;
 let tangoIdx = 0;
 let speedMul = 1;
-let showStrokeNum = true;
-let guideHighlightOn = true;
-let curTraceStroke = 0;
 let animRaf = null;
 let cvW = 300, cvH = 200;
 
@@ -390,72 +382,19 @@ function drawSmoothLine(ctx, pts, color, lw) {
   ctx.stroke();
 }
 
-function drawStrokeBadge(ctx, pos, num, color) {
-  const s = sc();
-  const r = 11 * Math.min(1, s * 0.9);
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(pos.x, pos.y, Math.max(8, r), 0, Math.PI*2);
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.font = `bold ${Math.max(9, r)}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(String(num), pos.x, pos.y + 1);
-  ctx.restore();
-}
-
-function drawArrowHead(ctx, pts, color) {
-  if (pts.length < 2) return;
-  const end = pts[pts.length-1];
-  const prev = pts[pts.length-2];
-  const angle = Math.atan2(end.y - prev.y, end.x - prev.x);
-  const len = 12;
-  ctx.save();
-  ctx.translate(end.x, end.y);
-  ctx.rotate(angle);
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(-len, len*0.55);
-  ctx.lineTo(-len*0.6, 0);
-  ctx.lineTo(-len, -len*0.55);
-  ctx.closePath();
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.restore();
-}
-
 // ============================================================
 // ガイド描画
 // ============================================================
-function redrawGuide(highlightIdx) {
+function redrawGuide() {
   const ctx = cvGuide.getContext('2d');
   drawFourLines(ctx);
 
   const { strokes } = buildWordStrokes(curWord);
   const s = sc();
-  const hasHighlight = (typeof highlightIdx === 'number');
 
-  strokes.forEach((strokePts, i) => {
+  strokes.forEach(strokePts => {
     const pts = strokePts.map(([x,y]) => ({ x: x*s, y: y*s }));
-
-    if (!hasHighlight) {
-      drawSmoothLine(ctx, pts, 'rgba(91,168,255,0.4)', Math.max(3, 6*s));
-      if (showStrokeNum) drawStrokeBadge(ctx, pts[0], i+1, 'rgba(91,168,255,0.85)');
-      return;
-    }
-
-    const isCur = i === highlightIdx;
-    const isDone = i < highlightIdx;
-    const color = isCur ? 'rgba(255,107,157,0.9)' : (isDone ? 'rgba(160,160,160,0.25)' : 'rgba(210,210,210,0.2)');
-    const width = isCur ? Math.max(4, 7*s) : Math.max(3, 5*s);
-    drawSmoothLine(ctx, pts, color, width);
-
-    if (isCur) {
-      if (showStrokeNum) drawStrokeBadge(ctx, pts[0], i+1, 'rgba(255,107,157,0.95)');
-      drawArrowHead(ctx, pts, 'rgba(255,107,157,0.9)');
-    }
+    drawSmoothLine(ctx, pts, 'rgba(91,168,255,0.4)', Math.max(3, 6*s));
   });
 }
 
@@ -532,9 +471,7 @@ let traceDrawing = false;
 let traceMarked = false;
 
 function setupTrace() {
-  const { strokes } = buildWordStrokes(curWord);
-  curTraceStroke = 0;
-  redrawGuide(guideHighlightOn ? curTraceStroke : undefined);
+  redrawGuide();
 
   const ctx = cvTrace.getContext('2d');
   ctx.clearRect(0, 0, cvW, cvH);
@@ -561,14 +498,7 @@ function setupTrace() {
     ctx.beginPath(); ctx.moveTo(p.x, p.y);
   };
   cvTrace.onpointerup = cvTrace.onpointercancel = () => {
-    if (!traceDrawing) return;
     traceDrawing = false;
-    if (!guideHighlightOn) return;
-    if (curTraceStroke < strokes.length) curTraceStroke++;
-    redrawGuide(curTraceStroke);
-    if (curTraceStroke >= strokes.length) {
-      setStatusMsg('✨ よくできました！');
-    }
   };
 }
 
@@ -576,8 +506,7 @@ function clearTrace() {
   const ctx = cvTrace.getContext('2d');
   ctx.clearRect(0, 0, cvW, cvH);
   traceMarked = false;
-  curTraceStroke = 0;
-  redrawGuide(guideHighlightOn ? curTraceStroke : undefined);
+  redrawGuide();
   setStatusMsg('');
 }
 
@@ -607,7 +536,6 @@ function setMode(m) {
   document.getElementById('btn-trace').classList.toggle('active-trace', m==='trace');
   document.getElementById('speed-row').style.display = m==='anim' ? 'flex' : 'none';
   document.getElementById('trace-btns').style.display = m==='trace' ? 'flex' : 'none';
-  document.getElementById('numtoggle-row').style.display = m==='trace' ? 'flex' : 'none';
   redraw();
 }
 
@@ -642,22 +570,6 @@ function setSpeed(v, btn) {
   document.querySelectorAll('#speed-row .spd-btn').forEach(b => b.classList.remove('sel'));
   btn.classList.add('sel');
   if (mode === 'anim') startAnim();
-}
-
-function toggleStrokeNum() {
-  showStrokeNum = !showStrokeNum;
-  const btn = document.getElementById('btn-numtoggle');
-  btn.classList.toggle('sel', showStrokeNum);
-  btn.textContent = showStrokeNum ? '🔢 書き順をひょうじ' : '🔢 書き順をかくす';
-  redrawGuide(mode==='trace' ? (guideHighlightOn ? curTraceStroke : undefined) : undefined);
-}
-
-function toggleGuideHighlight() {
-  guideHighlightOn = !guideHighlightOn;
-  const btn = document.getElementById('btn-guidetoggle');
-  btn.classList.toggle('sel', guideHighlightOn);
-  btn.textContent = guideHighlightOn ? '✨ なぞりガイド' : '✨ ガイドなし';
-  redrawGuide(mode==='trace' ? (guideHighlightOn ? curTraceStroke : undefined) : undefined);
 }
 
 function setReading(r) {
